@@ -18,10 +18,29 @@ impl Scene {
 
     let program = {
       let ker = format!("
+        float toi(
+          const float3 eye,
+          const float3 look,
+
+          const float3 sphere,
+          const float radius)
+        {{
+          float a = dot(radius, radius);
+          float b = 2 * dot(eye - sphere, look);
+          float c = dot(sphere, sphere) + dot(eye, eye) - dot(eye, sphere) - radius * radius;
+
+          float d = b*b - 4*a*c;
+
+          if (d < 0) {{
+            return -1;
+          }}
+
+          return (-sqrt(d) - b) / (2 * a);
+        }}
+
         __kernel void render(
-          // sphere
-          const float3 center,
-          const float radius,
+          const float3 obj_center,
+          const float obj_radius,
 
           const float3 eye,
 
@@ -43,11 +62,9 @@ impl Scene {
 
           float c = -cos(t_y);
           float3 ray = {{c*sin(t_x), sin(t_y), c*cos(t_x)}};
-          float a = dot(ray, center - eye) / dot(ray, ray);
-          float3 d = eye + a*ray - center;
 
           i = i * 3;
-          if (dot(d, d) <= radius * radius) {{
+          if (toi(eye, ray, obj_center, obj_radius) >= 0) {{
             output[i+0] = 1;
             output[i+1] = 0;
             output[i+2] = 0;
