@@ -20,14 +20,11 @@ impl Scene {
       let ker = format!("
         __kernel void render(
           // sphere
-          const float center_x,
-          const float center_y,
-          const float center_z,
+          const float3 center,
           const float radius,
 
-          const float eye_x,
-          const float eye_y,
-          const float eye_z,
+          const float3 eye,
+
           __global float * output)
         {{
           int W = {};
@@ -45,24 +42,12 @@ impl Scene {
           float t_y = fov_y * (y_pix / H - 0.5);
 
           float c = -cos(t_y);
-          float ray_x = sin(t_x) * c;
-          float ray_z = cos(t_x) * c;
-          float ray_y = sin(t_y);
-
-          float a = 0
-            + ray_x * (center_x - eye_x)
-            + ray_y * (center_y - eye_y)
-            + ray_z * (center_z - eye_z)
-            / (ray_x * ray_x + ray_y * ray_y + ray_z * ray_z);
-
-          float dx = eye_x + a * ray_x - center_x;
-          float dy = eye_y + a * ray_y - center_y;
-          float dz = eye_z + a * ray_z - center_z;
-
-          float distance = dx*dx + dy*dy + dz*dz;
+          float3 ray = {{c*sin(t_x), sin(t_y), c*cos(t_x)}};
+          float a = dot(ray, center - eye) / dot(ray, ray);
+          float3 d = eye + a*ray - center;
 
           i = i * 3;
-          if (distance <= radius * radius) {{
+          if (dot(d, d) <= radius * radius) {{
             output[i+0] = 1;
             output[i+1] = 0;
             output[i+2] = 0;
@@ -80,17 +65,12 @@ impl Scene {
     program.build(&device).unwrap();
 
     let kernel = program.create_kernel("render");
-    kernel.set_arg(0, &self.center[0]);
-    kernel.set_arg(1, &self.center[1]);
-    kernel.set_arg(2, &self.center[2]);
-    kernel.set_arg(3, &self.radius);
-
-    kernel.set_arg(4, &self.camera[0]);
-    kernel.set_arg(5, &self.camera[1]);
-    kernel.set_arg(6, &self.camera[2]);
+    kernel.set_arg(0, &self.center);
+    kernel.set_arg(1, &self.radius);
+    kernel.set_arg(2, &self.camera);
 
     // This is sketchy; we "implicitly cast" output_buffer from a CLBuffer<RGB> to a CLBuffer<f32>.
-    kernel.set_arg(7, &output_buffer);
+    kernel.set_arg(3, &output_buffer);
 
     let event = queue.enqueue_async_kernel(&kernel, len, None, ());
 
