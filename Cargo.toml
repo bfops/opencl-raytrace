@@ -1,0 +1,28 @@
+[package]
+
+name = "opencl-raytrace"
+version = "0.0.0"
+authors = [
+  "Ben Foppa <benjamin.foppa@gmail.com>",
+]
+
+[[bin]]
+
+name = "raytrace"
+path = "./src/bin.rs"
+
+[dependencies]
+log = "*"
+time = "*"
+
+[dependencies.opencl]
+git = "https://github.com/luqmana/rust-opencl"
+
+[dependencies.gl]
+git = "https://github.com/bjz/gl-rs"
+
+[dependencies.yaglw]
+git = "https://github.com/bfops/yaglw"
+
+[dependencies.sdl2]
+git = "https://github.com/AngryLawyer/rust-sdl2"

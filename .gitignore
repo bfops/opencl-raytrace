@@ -1,0 +1,6 @@
+*~
+*.sw[a-z]
+*.old
+*.bak
+/doc/
+/target/
