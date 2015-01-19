@@ -52,7 +52,7 @@ pub fn main() {
 
   let scene =
     Scene {
-      center: [0.0, 0.0, -0.5],
+      center: [0.0, 0.0, -4.0],
       radius: 1.0,
       camera: [0.0, 0.0, 0.0],
     };

@@ -25,36 +25,39 @@ impl Scene {
           const float center_z,
           const float radius,
 
-          const float camera_x,
-          const float camera_y,
-          const float camera_z,
+          const float eye_x,
+          const float eye_y,
+          const float eye_z,
           __global float * output)
         {{
           int W = {};
           int H = {};
 
+          float fov_x = 3.14 / 2;
+          float fov_y = 3.14 / 2;
+
           int i = get_global_id(0);
 
-          float x = i % W;
-          float y = i / W;
+          float x_pix = i % W;
+          float y_pix = i / W;
 
-          x = camera_x + 2 * (x / W) - 1;
-          y = camera_y + 2 * (y / H) - 1;
-          float z = camera_z;
+          float t_x = fov_x * (x_pix / W - 0.5);
+          float t_y = fov_y * (y_pix / H - 0.5);
 
-          float ray_x = 0;
-          float ray_y = 0;
-          float ray_z = -1;
+          float c = -cos(t_y);
+          float ray_x = sin(t_x) * c;
+          float ray_z = cos(t_x) * c;
+          float ray_y = sin(t_y);
 
           float a = 0
-            + ray_x * (center_x - x)
-            + ray_y * (center_y - y)
-            + ray_z * (center_z - z)
+            + ray_x * (center_x - eye_x)
+            + ray_y * (center_y - eye_y)
+            + ray_z * (center_z - eye_z)
             / (ray_x * ray_x + ray_y * ray_y + ray_z * ray_z);
 
-          float dx = x + a * ray_x - center_x;
-          float dy = y + a * ray_y - center_y;
-          float dz = z + a * ray_z - center_z;
+          float dx = eye_x + a * ray_x - center_x;
+          float dy = eye_y + a * ray_y - center_y;
+          float dz = eye_z + a * ray_z - center_z;
 
           float distance = dx*dx + dy*dy + dz*dz;
 
