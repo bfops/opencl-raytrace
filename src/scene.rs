@@ -42,11 +42,22 @@ impl Scene {
           y = camera_y + 2 * (y / H) - 1;
           float z = camera_z;
 
-          float dx = x - center_x;
-          float dy = y - center_y;
-          float dz = z - center_z;
+          float ray_x = 0;
+          float ray_y = 0;
+          float ray_z = -1;
+
+          float a = 0
+            + ray_x * (center_x - x)
+            + ray_y * (center_y - y)
+            + ray_z * (center_z - z)
+            / (ray_x * ray_x + ray_y * ray_y + ray_z * ray_z);
+
+          float dx = x + a * ray_x - center_x;
+          float dy = y + a * ray_y - center_y;
+          float dz = z + a * ray_z - center_z;
 
           float distance = dx*dx + dy*dy + dz*dz;
+
           i = i * 3;
           if (distance <= radius * radius) {{
             output[i+0] = 1;
