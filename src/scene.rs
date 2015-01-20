@@ -3,8 +3,10 @@ use opencl;
 use opencl::mem::CLBuffer;
 
 pub struct Scene {
-  pub center: [f32; 3],
-  pub radius: f32,
+  pub obj1_center: [f32; 3],
+  pub obj1_radius: f32,
+  pub obj2_center: [f32; 3],
+  pub obj2_radius: f32,
   pub camera: [f32; 3],
 }
 
@@ -39,8 +41,10 @@ impl Scene {
         }}
 
         __kernel void render(
-          const float3 obj_center,
-          const float obj_radius,
+          const float3 obj1_center,
+          const float obj1_radius,
+          const float3 obj2_center,
+          const float obj2_radius,
 
           const float3 eye,
 
@@ -63,19 +67,26 @@ impl Scene {
           float c = cos(t_y);
           float3 ray = {{c*sin(t_x), sin(t_y), -c*cos(t_x)}};
 
-          float t = toi(eye, ray, obj_center, obj_radius);
+          float toi1 = toi(eye, ray, obj1_center, obj1_radius);
+          float toi2 = toi(eye, ray, obj2_center, obj2_radius);
 
           i = i * 3;
-          if (t == HUGE_VALF) {{
+          if (toi1 == HUGE_VALF && toi2 == HUGE_VALF) {{
             output[i+0] = 0;
             output[i+1] = 0;
             output[i+2] = 0;
             return;
           }}
 
-          output[i+0] = 1;
-          output[i+1] = 0;
-          output[i+2] = 0;
+          if (toi1 < toi2) {{
+            output[i+0] = 1;
+            output[i+1] = 0;
+            output[i+2] = 0;
+          }} else {{
+            output[i+0] = 0;
+            output[i+1] = 1;
+            output[i+2] = 0;
+          }}
         }}",
         WINDOW_WIDTH,
         WINDOW_HEIGHT,
@@ -85,12 +96,14 @@ impl Scene {
     program.build(&device).unwrap();
 
     let kernel = program.create_kernel("render");
-    kernel.set_arg(0, &self.center);
-    kernel.set_arg(1, &self.radius);
-    kernel.set_arg(2, &self.camera);
+    kernel.set_arg(0, &self.obj1_center);
+    kernel.set_arg(1, &self.obj1_radius);
+    kernel.set_arg(2, &self.obj2_center);
+    kernel.set_arg(3, &self.obj2_radius);
+    kernel.set_arg(4, &self.camera);
 
     // This is sketchy; we "implicitly cast" output_buffer from a CLBuffer<RGB> to a CLBuffer<f32>.
-    kernel.set_arg(3, &output_buffer);
+    kernel.set_arg(5, &output_buffer);
 
     let event = queue.enqueue_async_kernel(&kernel, len, None, ());
 
