@@ -32,7 +32,7 @@ impl Scene {
           float d = b*b - 4*a*c;
 
           if (d < 0) {{
-            return -1;
+            return HUGE_VALF;
           }}
 
           return (-sqrt(d) - b) / (2 * a);
@@ -63,16 +63,19 @@ impl Scene {
           float c = cos(t_y);
           float3 ray = {{c*sin(t_x), sin(t_y), -c*cos(t_x)}};
 
+          float t = toi(eye, ray, obj_center, obj_radius);
+
           i = i * 3;
-          if (toi(eye, ray, obj_center, obj_radius) >= 0) {{
-            output[i+0] = 1;
-            output[i+1] = 0;
-            output[i+2] = 0;
-          }} else {{
+          if (t == HUGE_VALF) {{
             output[i+0] = 0;
             output[i+1] = 0;
             output[i+2] = 0;
+            return;
           }}
+
+          output[i+0] = 1;
+          output[i+1] = 0;
+          output[i+2] = 0;
         }}",
         WINDOW_WIDTH,
         WINDOW_HEIGHT,
