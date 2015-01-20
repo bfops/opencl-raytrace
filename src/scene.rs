@@ -27,7 +27,7 @@ impl Scene {
           const float3 sphere,
           const float radius)
         {{
-          float a = dot(radius, radius);
+          float a = dot(look, look);
           float b = 2 * dot(eye - sphere, look);
           float c = dot(sphere, sphere) + dot(eye, eye) - dot(eye, sphere) - radius * radius;
 
@@ -37,7 +37,21 @@ impl Scene {
             return HUGE_VALF;
           }}
 
-          return (-sqrt(d) - b) / (2 * a);
+          float s1 = (sqrt(d) - b) / (2 * a);
+          if (s1 < 0) {{
+            s1 = HUGE_VALF;
+          }}
+
+          float s2 = (-sqrt(d) - b) / (2 * a);
+          if (s2 < 0) {{
+            s2 = HUGE_VALF;
+          }}
+
+          if (s1 < s2) {{
+            return s1;
+          }}
+
+          return s2;
         }}
 
         __kernel void render(
