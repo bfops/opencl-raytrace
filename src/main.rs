@@ -54,8 +54,8 @@ pub fn main() {
     Scene {
       obj1_center: [-1.0, 0.0, -4.0],
       obj1_radius: 1.0,
-      obj2_center: [1.0, 0.0, -4.0],
-      obj2_radius: 2.0,
+      obj2_center: [1.0, 0.0, 1.0],
+      obj2_radius: 1.0,
       camera: [0.0, 0.0, 0.0],
     };
 
