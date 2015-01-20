@@ -60,8 +60,8 @@ impl Scene {
           float t_x = fov_x * (x_pix / W - 0.5);
           float t_y = fov_y * (y_pix / H - 0.5);
 
-          float c = -cos(t_y);
-          float3 ray = {{c*sin(t_x), sin(t_y), c*cos(t_x)}};
+          float c = cos(t_y);
+          float3 ray = {{c*sin(t_x), sin(t_y), -c*cos(t_x)}};
 
           i = i * 3;
           if (toi(eye, ray, obj_center, obj_radius) >= 0) {{
