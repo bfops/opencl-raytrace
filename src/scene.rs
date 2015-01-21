@@ -93,9 +93,7 @@ impl Scene {
           float3 look = {{c*sin(t_x), sin(t_y), -c*cos(t_x)}};
 
           i = i * 3;
-          output[i+0] = 1;
-          output[i+1] = 1;
-          output[i+2] = 1;
+          float3 color = {{1, 1, 1}};
 
           int max_bounces = 1;
           // The number of casts is the number of bounces - 1.
@@ -111,25 +109,27 @@ impl Scene {
             }}
 
             if (toi1 < toi2) {{
-              // obj1 color factor
-              output[i+0] *= 1;
-              output[i+1] *= 0;
-              output[i+2] *= 0;
+              float3 obj_color = {{1, 0, 0}};
+              color *= obj_color;
 
               float3 intersection = eye + toi1 * look;
               float3 normal = normalize(intersection - obj1_center);
               float directness = -dot(normal, look) / length(look);
+
               if (directness < 0) {{
                 directness = 0;
               }}
-              output[i+0] *= directness;
-              output[i+1] *= directness;
-              output[i+2] *= directness;
+
+              color *= directness;
 
               eye = intersection;
               look = rotate_vec(-look, normal);
             }} else {{
               // We hit the light.
+
+              output[i+0] = color[0];
+              output[i+1] = color[1];
+              output[i+2] = color[2];
               return;
             }}
           }}
