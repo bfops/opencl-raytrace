@@ -5,49 +5,43 @@ use std::borrow::Borrow;
 use main::{WINDOW_WIDTH, WINDOW_HEIGHT, RGB};
 
 pub struct Scene {
-  pub obj1_center: [f32; 3],
-  pub obj1_radius: f32,
-  pub obj2_center: [f32; 3],
-  pub obj2_radius: f32,
-  pub camera: [f32; 3],
+  pub objects: Vec<f64>,
+  pub lights: Vec<f64>,
+  pub camera: [f64; 3],
 }
 
 impl Scene {
   pub fn render(&self) -> Vec<RGB> {
     let (device, ctx, queue) = opencl::util::create_compute_context().unwrap();
 
-    let len = WINDOW_WIDTH as usize * WINDOW_HEIGHT as usize;
-
-    let output_buffer: CLBuffer<RGB> = ctx.create_buffer(len, opencl::cl::CL_MEM_WRITE_ONLY);
-
     let program = {
       let ker = format!("
         // Doesn't return 0 so that rays can bounce without bumping.
-        float toi(
-          const float3 eye,
-          const float3 look,
+        double toi(
+          const double3 eye,
+          const double3 look,
 
-          const float3 sphere,
-          const float radius)
+          const double3 sphere,
+          const double radius)
         {{
           // quadratic coefficients
-          float a = dot(look, look);
-          float b = 2 * dot(eye - sphere, look);
-          float c = dot(sphere, sphere) + dot(eye, eye) - dot(eye, sphere) - radius * radius;
+          double a = dot(look, look);
+          double b = 2 * dot(eye - sphere, look);
+          double c = dot(sphere, sphere) + dot(eye, eye) - dot(eye, sphere) - radius * radius;
 
           // discriminant
-          float d = b*b - 4*a*c;
+          double d = b*b - 4*a*c;
 
           if (d < 0) {{
             return HUGE_VALF;
           }}
 
-          float s1 = (sqrt(d) - b) / (2 * a);
+          double s1 = (sqrt(d) - b) / (2 * a);
           if (s1 <= 0) {{
             s1 = HUGE_VALF;
           }}
 
-          float s2 = (-sqrt(d) - b) / (2 * a);
+          double s2 = (-sqrt(d) - b) / (2 * a);
           if (s1 < s2 || s2 <= 0) {{
             return s1;
           }}
@@ -55,85 +49,116 @@ impl Scene {
           return s2;
         }}
 
-        float3 rotate_vec(
-          const float3 vec,
-          const float3 axis)
+        double3 rotate_vec(
+          const double3 vec,
+          const double3 axis)
         {{
-          float3 r1 = {{2*axis[0]*axis[0] - 1, 2*axis[0]*axis[1], 2*axis[0]*axis[2]}};
-          float3 r2 = {{2*axis[0]*axis[1], 2*axis[1]*axis[1] - 1, 2*axis[1]*axis[2]}};
-          float3 r3 = {{2*axis[0]*axis[2], 2*axis[1]*axis[2], 2*axis[2]*axis[2] - 1}};
+          double3 r1 = {{2*axis[0]*axis[0] - 1, 2*axis[0]*axis[1], 2*axis[0]*axis[2]}};
+          double3 r2 = {{2*axis[0]*axis[1], 2*axis[1]*axis[1] - 1, 2*axis[1]*axis[2]}};
+          double3 r3 = {{2*axis[0]*axis[2], 2*axis[1]*axis[2], 2*axis[2]*axis[2] - 1}};
 
-          float3 r = {{dot(r1, vec), dot(r2, vec), dot(r3, vec)}};
+          double3 r = {{dot(r1, vec), dot(r2, vec), dot(r3, vec)}};
           return r;
         }}
 
         __kernel void render(
-          const float3 obj1_center,
-          const float obj1_radius,
-          const float3 obj2_center,
-          const float obj2_radius,
+          __global const double* objects,
+          const int n_objects,
+          __global const double* lights,
+          const int n_lights,
 
-          float3 eye,
+          double3 eye,
 
           __global float * output)
         {{
           int W = {};
           int H = {};
 
-          float fov_x = 3.14 / 2;
-          float fov_y = 3.14 / 2;
+          double fov_x = 3.14 / 2;
+          double fov_y = 3.14 / 2;
 
           int i = get_global_id(0);
 
-          float x_pix = i % W;
-          float y_pix = i / W;
+          double x_pix = i % W;
+          double y_pix = i / W;
 
-          float t_x = fov_x * (x_pix / W - 0.5);
-          float t_y = fov_y * (y_pix / H - 0.5);
+          double t_x = fov_x * (x_pix / W - 0.5);
+          double t_y = fov_y * (y_pix / H - 0.5);
 
-          float c = cos(t_y);
-          float3 look = {{c*sin(t_x), sin(t_y), -c*cos(t_x)}};
+          double c = cos(t_y);
+          double3 look = {{c*sin(t_x), sin(t_y), -c*cos(t_x)}};
 
           i = i * 3;
-          float3 color = {{1, 1, 1}};
+          double3 color = {{1, 1, 1}};
 
-          int max_bounces = 1;
+          int max_bounces = 128;
           // The number of casts is the number of bounces - 1.
           for (int cast = 0; cast <= max_bounces; ++cast) {{
-            float toi1 = toi(eye, look, obj1_center, obj1_radius);
-            float toi2 = toi(eye, look, obj2_center, obj2_radius);
+            double min_toi = HUGE_VALF;
+            double3 min_object = {{0, 0, 0}};
+            double3 min_color = {{0, 0, 0}};
 
-            if (toi1 == HUGE_VALF && toi2 == HUGE_VALF) {{
+            for (int j = 0; j < n_objects; ++j) {{
+              int idx = j * 7;
+              double3 center = {{objects[idx], objects[idx+1], objects[idx+2]}};
+              double radius = objects[idx+3];
+              double3 obj_color = {{objects[idx+4], objects[idx+5], objects[idx+6]}};
+              double cur_toi = toi(eye, look, center, radius);
+
+              if (cur_toi < min_toi) {{
+                min_toi = cur_toi;
+                min_object = center;
+                min_color = obj_color;
+              }}
+            }}
+
+            bool min_light = false;
+
+            for (int j = 0; j < n_lights; ++j) {{
+              int idx = j * 7;
+              double3 center = {{lights[idx], lights[idx+1], lights[idx+2]}};
+              double radius = lights[idx+3];
+              double3 light_color = {{lights[idx+4], lights[idx+5], lights[idx+6]}};
+              double cur_toi = toi(eye, look, center, radius);
+
+              if (cur_toi < min_toi) {{
+                min_toi = cur_toi;
+                min_light = true;
+                min_color = light_color;
+              }}
+            }}
+
+            if (min_toi == HUGE_VALF) {{
               output[i+0] = 0;
               output[i+1] = 0;
               output[i+2] = 0;
               return;
             }}
 
-            if (toi1 < toi2) {{
-              float3 obj_color = {{1, 0, 0}};
-              color *= obj_color;
+            color *= min_color;
 
-              float3 intersection = eye + toi1 * look;
-              float3 normal = normalize(intersection - obj1_center);
-              float directness = -dot(normal, look) / length(look);
-
-              if (directness < 0) {{
-                directness = 0;
-              }}
-
-              color *= directness;
-
-              eye = intersection;
-              look = rotate_vec(-look, normal);
-            }} else {{
-              // We hit the light.
+            if (min_light) {{
+              // We hit a light.
 
               output[i+0] = color[0];
               output[i+1] = color[1];
               output[i+2] = color[2];
               return;
             }}
+
+            double3 intersection = eye + min_toi * look;
+            double3 normal = normalize(intersection - min_object);
+            double directness = dot(normal, look);
+            if (directness < 0) {{
+              directness = -directness;
+            }} else {{
+              normal = -normal;
+            }}
+            directness = fmin(directness, 1);
+            color *= directness;
+
+            eye = intersection;
+            look = rotate_vec(-look, normal);
           }}
 
           output[i+0] = 1;
@@ -147,11 +172,25 @@ impl Scene {
     };
     program.build(&device).unwrap();
 
+    let len = WINDOW_WIDTH as usize * WINDOW_HEIGHT as usize;
+
+    let objects: CLBuffer<f64> =
+      ctx.create_buffer(self.objects.len(), opencl::cl::CL_MEM_READ_ONLY);
+    queue.write(&objects, &self.objects.as_slice(), ());
+    let n_objects = self.objects.len() as i32 / 7;
+
+    let lights: CLBuffer<f64> =
+      ctx.create_buffer(self.lights.len(), opencl::cl::CL_MEM_READ_ONLY);
+    queue.write(&lights, &self.lights.as_slice(), ());
+    let n_lights = self.lights.len() as i32 / 4;
+
+    let output_buffer: CLBuffer<RGB> = ctx.create_buffer(len, opencl::cl::CL_MEM_READ_WRITE);
+
     let kernel = program.create_kernel("render");
-    kernel.set_arg(0, &self.obj1_center);
-    kernel.set_arg(1, &self.obj1_radius);
-    kernel.set_arg(2, &self.obj2_center);
-    kernel.set_arg(3, &self.obj2_radius);
+    kernel.set_arg(0, &objects);
+    kernel.set_arg(1, &n_objects);
+    kernel.set_arg(2, &lights);
+    kernel.set_arg(3, &n_lights);
     kernel.set_arg(4, &self.camera);
 
     // This is sketchy; we "implicitly cast" output_buffer from a CLBuffer<RGB> to a CLBuffer<f32>.

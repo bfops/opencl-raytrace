@@ -52,14 +52,17 @@ pub fn main() {
   let mut vao = make_vao(&mut gl, &shader);
   vao.bind(&mut gl);
 
-  let scene =
+  let scene = {
     Scene {
-      obj1_center: [-1.0, 0.0, -4.0],
-      obj1_radius: 1.0,
-      obj2_center: [1.0, 0.0, 1.0],
-      obj2_radius: 1.0,
-      camera: [0.0, 0.0, 0.0],
-    };
+      objects: vec!(
+        0.1, 0.7, -1.0,    16.0,  1.0, 1.0, 1.0,
+      ),
+      lights: vec!(
+        0.0,  0.0, 2.0,   1.0,    0.0, 0.0, 1.0,
+      ),
+      camera: [-0.2, 0.3, 0.4],
+    }
+  };
 
   timers.time("update", || {
     vao.push(&mut gl, scene.render().as_slice());
