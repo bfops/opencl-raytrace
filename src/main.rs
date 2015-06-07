@@ -2,11 +2,10 @@ use gl;
 use scene::Scene;
 use sdl2;
 use sdl2::event::Event;
-use std::io::timer;
+use std;
 use std::mem;
-use std::time::duration::Duration;
 use stopwatch::TimerSet;
-use yaglw::gl_context::{GLContext, GLContextExistence};
+use yaglw::gl_context::GLContext;
 use yaglw::shader::Shader;
 use yaglw::vertex_buffer::{GLArray, GLBuffer, GLType, VertexAttribData, DrawMode};
 
@@ -23,20 +22,23 @@ pub struct RGB {
 pub fn main() {
   let timers = TimerSet::new();
 
-  let window = make_window();
+  let mut sdl = sdl2::init().everything().unwrap();
+  let window = make_window(&sdl);
 
-  let _sdl_gl_context = window.gl_create_context().unwrap();
+  let _sdl_gl = window.gl_create_context().unwrap();
+
+  let mut event_pump = sdl.event_pump();
 
   // Load the OpenGL function pointers.
   gl::load_with(|s| unsafe {
     mem::transmute(sdl2::video::gl_get_proc_address(s))
   });
 
-  let (gl, mut gl_context) = unsafe {
+  let mut gl = unsafe {
     GLContext::new()
   };
 
-  match gl_context.get_error() {
+  match gl.get_error() {
     gl::NO_ERROR => {},
     err => {
       println!("OpenGL error 0x{:x} in setup", err);
@@ -45,10 +47,10 @@ pub fn main() {
   }
 
   let shader = make_shader(&gl);
-  shader.use_shader(&mut gl_context);
+  shader.use_shader(&mut gl);
 
-  let mut vao = make_vao(&gl, &mut gl_context, &shader);
-  vao.bind(&mut gl_context);
+  let mut vao = make_vao(&mut gl, &shader);
+  vao.bind(&mut gl);
 
   let scene =
     Scene {
@@ -60,26 +62,26 @@ pub fn main() {
     };
 
   timers.time("update", || {
-    vao.push(&mut gl_context, scene.render().as_slice());
+    vao.push(&mut gl, scene.render().as_slice());
   });
 
-  while process_events() {
+  while process_events(&mut event_pump) {
     timers.time("draw", || {
-      gl_context.clear_buffer();
-      vao.draw(&mut gl_context);
+      gl.clear_buffer();
+      vao.draw(&mut gl);
       // swap buffers
       window.gl_swap_window();
     });
 
-    timer::sleep(Duration::milliseconds(10));
+    std::thread::sleep_ms(10);
   }
 
   timers.print();
 }
 
-fn make_shader<'a>(
-  gl: &'a GLContextExistence,
-) -> Shader<'a> {
+fn make_shader<'a, 'b:'a>(
+  gl: &'a GLContext,
+) -> Shader<'b> {
   let vertex_shader: String = format!("
     #version 330 core
 
@@ -118,33 +120,28 @@ fn make_shader<'a>(
   Shader::new(gl, components.into_iter())
 }
 
-fn make_window() -> sdl2::video::Window {
-  sdl2::init(sdl2::INIT_EVERYTHING);
+fn make_window(sdl: &sdl2::Sdl) -> sdl2::video::Window {
+  sdl2::video::gl_attr::set_context_profile(sdl2::video::GLProfile::Core);
+  sdl2::video::gl_attr::set_context_version(3, 3);
 
-  sdl2::video::gl_set_attribute(sdl2::video::GLAttr::GLContextMajorVersion, 3);
-  sdl2::video::gl_set_attribute(sdl2::video::GLAttr::GLContextMinorVersion, 3);
-  sdl2::video::gl_set_attribute(
-    sdl2::video::GLAttr::GLContextProfileMask,
-    sdl2::video::GLProfile::GLCoreProfile as isize
-  );
+  // Open the window as fullscreen at the current resolution.
+  let mut window =
+    sdl2::video::WindowBuilder::new(
+      &sdl,
+      "Raytrace",
+      WINDOW_WIDTH, WINDOW_HEIGHT,
+    );
 
-  let window = sdl2::video::Window::new(
-    "OpenCL",
-    sdl2::video::WindowPos::PosCentered,
-    sdl2::video::WindowPos::PosCentered,
-    WINDOW_WIDTH as isize,
-    WINDOW_HEIGHT as isize,
-    sdl2::video::OPENGL,
-  ).unwrap();
+  let window = window.position_centered();
+  window.opengl();
 
-  window
+  window.build().unwrap()
 }
 
-fn make_vao<'a>(
-  gl: &'a GLContextExistence,
-  gl_context: &mut GLContext,
-  shader: &Shader<'a>,
-) -> GLArray<'a, RGB> {
+fn make_vao<'a, 'b:'a>(
+  gl: &'a mut GLContext,
+  shader: &Shader<'b>,
+) -> GLArray<'b, RGB> {
   let attribs = [
     VertexAttribData {
       name: "color",
@@ -154,11 +151,10 @@ fn make_vao<'a>(
   ];
 
   let capacity = WINDOW_WIDTH as usize * WINDOW_HEIGHT as usize;
-  let vbo = GLBuffer::new(gl, gl_context, capacity);
+  let vbo = GLBuffer::new(gl, capacity);
 
   GLArray::new(
     gl,
-    gl_context,
     shader,
     &attribs,
     DrawMode::Points,
@@ -166,16 +162,16 @@ fn make_vao<'a>(
   )
 }
 
-fn process_events<'a>() -> bool {
+fn process_events(event_pump: &mut sdl2::event::EventPump) -> bool {
   loop {
-    match sdl2::event::poll_event() {
-      Event::None => {
+    match event_pump.poll_event() {
+      None => {
         return true;
       },
-      Event::Quit(_) => {
+      Some(Event::Quit {..}) => {
         return false;
       },
-      Event::AppTerminating(_) => {
+      Some(Event::AppTerminating {..}) => {
         return false;
       },
       _ => {},

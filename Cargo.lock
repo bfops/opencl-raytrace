@@ -2,117 +2,162 @@
 name = "opencl-raytrace"
 version = "0.0.0"
 dependencies = [
- "gl 0.0.5 (git+https://github.com/bjz/gl-rs)",
- "log 0.1.9 (registry+https://github.com/rust-lang/crates.io-index)",
+ "gl 0.0.12 (git+https://github.com/bjz/gl-rs)",
+ "log 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "opencl 0.3.0-dev (git+https://github.com/luqmana/rust-opencl)",
- "sdl2 0.0.18 (git+https://github.com/AngryLawyer/rust-sdl2)",
- "time 0.1.12 (registry+https://github.com/rust-lang/crates.io-index)",
+ "sdl2 0.4.0 (git+https://github.com/AngryLawyer/rust-sdl2)",
+ "stopwatch 0.0.0 (git+https://github.com/bfops/stopwatch-rs)",
+ "time 0.1.26 (registry+https://github.com/rust-lang/crates.io-index)",
  "yaglw 0.0.0 (git+https://github.com/bfops/yaglw)",
 ]
 
 [[package]]
 name = "bitflags"
-version = "0.1.0"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[[package]]
+name = "bitflags"
+version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "gcc"
-version = "0.1.5"
+version = "0.3.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "gl"
-version = "0.0.5"
-source = "git+https://github.com/bjz/gl-rs#f28b4c0fbc98b4614b29cfaacb4110f0b73f5685"
+version = "0.0.12"
+source = "git+https://github.com/bjz/gl-rs#34aa4386057b6616a7431ad13d3712d0bcd28477"
 dependencies = [
- "gl_common 0.0.3 (git+https://github.com/bjz/gl-rs)",
- "gl_generator 0.0.12 (git+https://github.com/bjz/gl-rs)",
+ "gl_common 0.0.4 (git+https://github.com/bjz/gl-rs)",
+ "gl_generator 0.0.26 (git+https://github.com/bjz/gl-rs)",
  "khronos_api 0.0.5 (git+https://github.com/bjz/gl-rs)",
+ "libc 0.1.8 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
 name = "gl_common"
-version = "0.0.3"
-source = "git+https://github.com/bjz/gl-rs#f28b4c0fbc98b4614b29cfaacb4110f0b73f5685"
+version = "0.0.4"
+source = "git+https://github.com/bjz/gl-rs#34aa4386057b6616a7431ad13d3712d0bcd28477"
+dependencies = [
+ "libc 0.1.8 (registry+https://github.com/rust-lang/crates.io-index)",
+]
 
 [[package]]
 name = "gl_generator"
-version = "0.0.12"
-source = "git+https://github.com/bjz/gl-rs#f28b4c0fbc98b4614b29cfaacb4110f0b73f5685"
+version = "0.0.26"
+source = "git+https://github.com/bjz/gl-rs#34aa4386057b6616a7431ad13d3712d0bcd28477"
 dependencies = [
- "gl_common 0.0.3 (git+https://github.com/bjz/gl-rs)",
  "khronos_api 0.0.5 (git+https://github.com/bjz/gl-rs)",
- "log 0.1.9 (registry+https://github.com/rust-lang/crates.io-index)",
- "xml-rs 0.1.13 (registry+https://github.com/rust-lang/crates.io-index)",
+ "log 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "xml-rs 0.1.25 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
 name = "khronos_api"
 version = "0.0.5"
-source = "git+https://github.com/bjz/gl-rs#f28b4c0fbc98b4614b29cfaacb4110f0b73f5685"
+source = "git+https://github.com/bjz/gl-rs#34aa4386057b6616a7431ad13d3712d0bcd28477"
+
+[[package]]
+name = "libc"
+version = "0.1.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "log"
-version = "0.1.9"
+version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
- "regex 0.1.10 (registry+https://github.com/rust-lang/crates.io-index)",
+ "libc 0.1.8 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "num"
+version = "0.1.25"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "rand 0.3.8 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rustc-serialize 0.3.15 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
 name = "opencl"
 version = "0.3.0-dev"
-source = "git+https://github.com/luqmana/rust-opencl#43bc3b2fe1b034ba4927804d218bb92fb4d6275b"
+source = "git+https://github.com/luqmana/rust-opencl#282293c4babb41d87ad17bf0aee4e00112b95298"
+dependencies = [
+ "libc 0.1.8 (registry+https://github.com/rust-lang/crates.io-index)",
+ "log 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
+]
 
 [[package]]
-name = "pkg-config"
-version = "0.1.5"
+name = "rand"
+version = "0.3.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "libc 0.1.8 (registry+https://github.com/rust-lang/crates.io-index)",
+]
 
 [[package]]
-name = "regex"
-version = "0.1.10"
+name = "rustc-serialize"
+version = "0.3.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "sdl2"
-version = "0.0.18"
-source = "git+https://github.com/AngryLawyer/rust-sdl2#b60f6ce493bc48a4284508e53bab07dc205bd09d"
+version = "0.4.0"
+source = "git+https://github.com/AngryLawyer/rust-sdl2#1aec5f7b4fdf530e5c8a7792c8d37211ec20b9b1"
 dependencies = [
- "bitflags 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "sdl2-sys 0.0.16 (git+https://github.com/AngryLawyer/rust-sdl2)",
+ "bitflags 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "libc 0.1.8 (registry+https://github.com/rust-lang/crates.io-index)",
+ "num 0.1.25 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rand 0.3.8 (registry+https://github.com/rust-lang/crates.io-index)",
+ "sdl2-sys 0.4.0 (git+https://github.com/AngryLawyer/rust-sdl2)",
 ]
 
 [[package]]
 name = "sdl2-sys"
-version = "0.0.16"
-source = "git+https://github.com/AngryLawyer/rust-sdl2#b60f6ce493bc48a4284508e53bab07dc205bd09d"
+version = "0.4.0"
+source = "git+https://github.com/AngryLawyer/rust-sdl2#1aec5f7b4fdf530e5c8a7792c8d37211ec20b9b1"
 dependencies = [
- "pkg-config 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
+ "libc 0.1.8 (registry+https://github.com/rust-lang/crates.io-index)",
+ "num 0.1.25 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "stopwatch"
+version = "0.0.0"
+source = "git+https://github.com/bfops/stopwatch-rs#b2823511fffa721a02c8c8164a5b52511aeb6de8"
+dependencies = [
+ "log 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "time 0.1.26 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
 name = "time"
-version = "0.1.12"
+version = "0.1.26"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
- "gcc 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
+ "gcc 0.3.8 (registry+https://github.com/rust-lang/crates.io-index)",
+ "libc 0.1.8 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
 name = "xml-rs"
-version = "0.1.13"
+version = "0.1.25"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
- "bitflags 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "bitflags 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
 name = "yaglw"
 version = "0.0.0"
-source = "git+https://github.com/bfops/yaglw#582295296381aa6f15ae40a2d22652d6522e2f33"
+source = "git+https://github.com/bfops/yaglw#baf2202449e3904757651d865af6030b6d343ab8"
 dependencies = [
- "gl 0.0.5 (git+https://github.com/bjz/gl-rs)",
- "log 0.1.9 (registry+https://github.com/rust-lang/crates.io-index)",
+ "gl 0.0.12 (git+https://github.com/bjz/gl-rs)",
+ "log 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "num 0.1.25 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 

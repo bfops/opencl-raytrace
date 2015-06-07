@@ -1,6 +1,8 @@
-use main::{WINDOW_WIDTH, WINDOW_HEIGHT, RGB};
 use opencl;
 use opencl::mem::CLBuffer;
+use std::borrow::Borrow;
+
+use main::{WINDOW_WIDTH, WINDOW_HEIGHT, RGB};
 
 pub struct Scene {
   pub obj1_center: [f32; 3],
@@ -141,7 +143,7 @@ impl Scene {
         WINDOW_WIDTH,
         WINDOW_HEIGHT,
       );
-      ctx.create_program_from_source(ker.as_slice())
+      ctx.create_program_from_source(ker.borrow())
     };
     program.build(&device).unwrap();
 
