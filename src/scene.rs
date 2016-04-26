@@ -6,9 +6,11 @@ use std::io::Read;
 
 use main::{WINDOW_WIDTH, WINDOW_HEIGHT, RGB};
 
+#[repr(C)]
 pub struct Object {
   pub center: [f32; 3],
   pub radius: f32,
+  pub color: [f32; 3],
 }
 
 pub struct T {

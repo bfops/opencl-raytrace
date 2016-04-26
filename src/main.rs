@@ -20,15 +20,15 @@ unsafe impl glium::texture::PixelValue for RGB {
   }
 }
 
-pub const WINDOW_WIDTH: u32 = 1200;
-pub const WINDOW_HEIGHT: u32 = 800;
+pub const WINDOW_WIDTH: u32 = 800;
+pub const WINDOW_HEIGHT: u32 = 600;
 
 pub fn main() {
   use glium::DisplayBuild;
 
   let window =
     glutin::WindowBuilder::new()
-    .with_vsync()
+    .with_dimensions(WINDOW_WIDTH, WINDOW_HEIGHT)
     .build_glium()
     .unwrap();
 
@@ -51,8 +51,8 @@ pub fn main() {
     scene::T {
       objects :
         vec!(
-          scene::Object { center: [-1.0, 0.0, -4.0], radius: 1.0 },
-          scene::Object { center: [ 1.0, 0.0,  1.0], radius: 1.0 },
+          scene::Object { center: [-1.0, 0.0, -4.0], radius: 1.0, color: [1.0, 0.0, 0.0] },
+          scene::Object { center: [ 3.0, 1.0, -6.0], radius: 1.0, color: [1.0, 1.0, 1.0] },
         ),
       fovy    : std::f32::consts::FRAC_PI_2,
       eye     : [0.0, 0.0,  0.0],

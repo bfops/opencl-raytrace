@@ -124,10 +124,39 @@ RGB rgb(float3 xyz) {
   return r;
 }
 
+typedef struct { float x, y, z } float3_parse;
+
+float3 pack_float3(float3_parse f) {
+  return (float3)(f.x, f.y, f.z);
+}
+
 typedef struct {
-  float cx, cy, cz;
+  float3_parse center;
   float radius;
+  float3_parse color;
 } Object;
+
+float parse_float(__global const float** data) {
+  float r = **data;
+  ++*data;
+  return r;
+}
+
+float3_parse parse_float3(__global const float** data) {
+  float3_parse r;
+  r.x = parse_float(data);
+  r.y = parse_float(data);
+  r.z = parse_float(data);
+  return r;
+}
+
+Object parse_object(__global const float* data) {
+  Object r;
+  r.center = parse_float3(&data);
+  r.radius = parse_float(&data);
+  r.color = parse_float3(&data);
+  return r;
+}
 
 __kernel void render(
   const unsigned int window_width,
@@ -138,7 +167,7 @@ __kernel void render(
   const float3 look,
   const float3 up,
 
-  __global const Object* objects,
+  __global const float* objects,
   const unsigned int num_objects,
 
   __global RGB * output)
@@ -157,20 +186,17 @@ __kernel void render(
   float3 ray = normalize((world_pos / world_pos.w).xyz - eye);
 
   float toi = HUGE_VALF;
+  output[id] = rgb((float3)(0, 0, 0));
+
   for (unsigned int i = 0; i < num_objects; ++i) {
-    float3 center = (float3)(objects[i].cx, objects[i].cy, objects[i].cz);
-    float this_toi = sphere_toi(eye, ray, center, objects[i].radius);
+    Object object = parse_object(objects + i*sizeof(Object)/sizeof(float));
+    float this_toi = sphere_toi(eye, ray, pack_float3(object.center), object.radius);
 
     if (this_toi >= toi) {
       continue;
     }
 
     toi = this_toi;
-  }
-
-  if (toi == HUGE_VALF) {
-    output[id] = rgb((float3)(0, 0, 0));
-  } else {
-    output[id] = rgb((float3)(1, 0, 0));
+    output[id] = rgb(pack_float3(object.color));
   }
 }
