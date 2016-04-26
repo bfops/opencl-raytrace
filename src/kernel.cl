@@ -1,19 +1,3 @@
-float4 vec4(float x, float y, float z, float w) {
-  float4 r;
-  r.x = x;
-  r.y = y;
-  r.z = z;
-  r.w = w;
-  return r;
-}
-
-float4 vec31(float3 xyz, float w) {
-  float4 r;
-  r.xyz = xyz;
-  r.w = w;
-  return r;
-}
-
 // Doesn't return 0 so that rays can bounce without bumping.
 float toi(
   const float3 eye,
@@ -68,7 +52,7 @@ typedef struct {
 
 float4 vmult(mat4 m, float4 v) {
   return
-    vec4(
+    (float4)(
       dot(m.row1, v),
       dot(m.row2, v),
       dot(m.row3, v),
@@ -86,19 +70,19 @@ mat4 screen_to_view(unsigned int w, unsigned int h, float fovy) {
   mat4 r;
   // We divide both x and y by h, to take aspect ratio into account.
   // An increase in image width will cause wider rays to be shot.
-  r.row1 = vec4(a, 0, 0, b * aspect);
-  r.row2 = vec4(0, a, 0, b);
-  r.row3 = vec4(0, 0, 1, 0);
-  r.row4 = vec4(0, 0, 0, 1);
+  r.row1 = (float4)(a, 0, 0, b * aspect);
+  r.row2 = (float4)(0, a, 0, b);
+  r.row3 = (float4)(0, 0, 1, 0);
+  r.row4 = (float4)(0, 0, 0, 1);
 
   return r;
 }
 
 mat4 view_to_world(float3 eye, float3 look, float3 up) {
-  float4 x = vec31(cross(look, up), 0);
-  float4 y = vec31(up, 0);
-  float4 z = vec31(look, 0);
-  float4 w = vec31(eye, 1);
+  float4 x = (float4)(cross(look, up), 0);
+  float4 y = (float4)(up, 0);
+  float4 z = (float4)(look, 0);
+  float4 w = (float4)(eye, 1);
 
   // Change of basis
 
@@ -156,7 +140,7 @@ __kernel void render(
   float4 world_pos =
     vmult(view_to_world(eye, look, up),
     vmult(screen_to_view(window_width, window_height, fovy),
-    vec4(x_pix, y_pix, 1, 1)
+    (float4)(x_pix, y_pix, 1, 1)
   ));
 
   float3 ray = normalize((world_pos / world_pos.w).xyz - eye);
