@@ -1,5 +1,6 @@
 use glium;
 use glutin;
+use std;
 
 use scene;
 
@@ -48,11 +49,14 @@ pub fn main() {
 
   let scene =
     scene::T {
-      obj1_center: [-1.0, 0.0, -4.0],
-      obj1_radius: 1.0,
-      obj2_center: [1.0, 0.0, 1.0],
-      obj2_radius: 1.0,
-      camera: [0.0, 0.0, 0.0],
+      obj1_center : [-1.0, 0.0, -4.0],
+      obj1_radius : 1.0,
+      obj2_center : [1.0, 0.0, 1.0],
+      obj2_radius : 1.0,
+      fovy        : std::f32::consts::FRAC_PI_2,
+      eye         : [0.0, 0.0, 0.0],
+      look        : [0.0, 0.0, -1.0],
+      up          : [0.0, 1.0, 0.0],
     };
 
   let mut rendered_2d = vec!();

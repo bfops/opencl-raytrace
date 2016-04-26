@@ -11,7 +11,10 @@ pub struct T {
   pub obj1_radius: f32,
   pub obj2_center: [f32; 3],
   pub obj2_radius: f32,
-  pub camera: [f32; 3],
+  pub fovy: f32,
+  pub eye: [f32; 3],
+  pub look: [f32; 3],
+  pub up: [f32; 3],
 }
 
 impl T {
@@ -39,10 +42,13 @@ impl T {
     kernel.set_arg(3, &self.obj1_radius);
     kernel.set_arg(4, &self.obj2_center);
     kernel.set_arg(5, &self.obj2_radius);
-    kernel.set_arg(6, &self.camera);
+    kernel.set_arg(6, &self.fovy);
+    kernel.set_arg(7, &self.eye);
+    kernel.set_arg(8, &self.look);
+    kernel.set_arg(9, &self.up);
 
     // This is sketchy; we "implicitly cast" output_buffer from a CLBuffer<RGB> to a CLBuffer<f32>.
-    kernel.set_arg(7, &output_buffer);
+    kernel.set_arg(10, &output_buffer);
 
     let event = queue.enqueue_async_kernel(&kernel, len, None, ());
 
