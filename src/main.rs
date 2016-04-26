@@ -1,59 +1,53 @@
-use gl;
-use scene::Scene;
-use sdl2;
-use sdl2::event::Event;
-use std;
-use std::mem;
-use stopwatch::TimerSet;
-use yaglw::gl_context::GLContext;
-use yaglw::shader::Shader;
-use yaglw::vertex_buffer::{GLArray, GLBuffer, GLType, VertexAttribData, DrawMode};
+use glium;
+use glutin;
 
-pub const WINDOW_WIDTH: u32 = 800;
-pub const WINDOW_HEIGHT: u32 = 800;
+use scene;
 
 #[repr(C)]
+#[derive(Clone, Copy)]
 pub struct RGB {
   pub r: f32,
   pub g: f32,
   pub b: f32,
 }
 
+unsafe impl Send for RGB {}
+
+unsafe impl glium::texture::PixelValue for RGB {
+  fn get_format() -> glium::texture::ClientFormat {
+    glium::texture::ClientFormat::F32F32F32
+  }
+}
+
+pub const WINDOW_WIDTH: u32 = 1200;
+pub const WINDOW_HEIGHT: u32 = 800;
+
 pub fn main() {
-  let timers = TimerSet::new();
+  use glium::DisplayBuild;
 
-  let mut sdl = sdl2::init().everything().unwrap();
-  let window = make_window(&sdl);
+  let window =
+    glutin::WindowBuilder::new()
+    .with_vsync()
+    .build_glium()
+    .unwrap();
 
-  let _sdl_gl = window.gl_create_context().unwrap();
-
-  let mut event_pump = sdl.event_pump();
-
-  // Load the OpenGL function pointers.
-  gl::load_with(|s| unsafe {
-    mem::transmute(sdl2::video::gl_get_proc_address(s))
-  });
-
-  let mut gl = unsafe {
-    GLContext::new()
-  };
-
-  match gl.get_error() {
-    gl::NO_ERROR => {},
-    err => {
-      println!("OpenGL error 0x{:x} in setup", err);
-      return;
-    },
+  let mut image_data = vec!();
+  for y in 0 .. WINDOW_HEIGHT {
+    let mut row = vec!();
+    for x in 0 .. WINDOW_WIDTH {
+      row.push(
+        RGB {
+          r: x as f32 / WINDOW_WIDTH as f32,
+          g: y as f32 / WINDOW_HEIGHT as f32,
+          b: 0.0,
+        }
+      );
+    }
+    image_data.push(row);
   }
 
-  let shader = make_shader(&gl);
-  shader.use_shader(&mut gl);
-
-  let mut vao = make_vao(&mut gl, &shader);
-  vao.bind(&mut gl);
-
   let scene =
-    Scene {
+    scene::T {
       obj1_center: [-1.0, 0.0, -4.0],
       obj1_radius: 1.0,
       obj2_center: [1.0, 0.0, 1.0],
@@ -61,120 +55,103 @@ pub fn main() {
       camera: [0.0, 0.0, 0.0],
     };
 
-  timers.time("update", || {
-    vao.push(&mut gl, scene.render().as_slice());
-  });
-
-  while process_events(&mut event_pump) {
-    timers.time("draw", || {
-      gl.clear_buffer();
-      vao.draw(&mut gl);
-      // swap buffers
-      window.gl_swap_window();
-    });
-
-    std::thread::sleep_ms(10);
+  let mut rendered_2d = vec!();
+  {
+    let rendered = scene.render();
+    for y in 0 .. WINDOW_HEIGHT as usize {
+      let mut row = vec!();
+      for x in 0 .. WINDOW_WIDTH as usize {
+        row.push(rendered[y * WINDOW_WIDTH as usize + x]);
+      }
+      rendered_2d.push(row);
+    }
   }
 
-  timers.print();
-}
+  let opengl_texture = glium::texture::Texture2d::new(&window, rendered_2d).unwrap();
 
-fn make_shader<'a, 'b:'a>(
-  gl: &'a GLContext,
-) -> Shader<'b> {
-  let vertex_shader: String = format!("
-    #version 330 core
-
-    const int W = {};
-    const int H = {};
-
-    in vec3 color;
-    out vec4 v_color;
-
-    void main() {{
-      v_color = vec4(color, 1);
-      gl_Position =
-        vec4(
-          float(gl_VertexID % W) / W * 2 - 1,
-          float(gl_VertexID / W) / H * 2 - 1,
-          0, 1
-        );
-    }}
-  ", WINDOW_WIDTH, WINDOW_HEIGHT);
-
-  let fragment_shader: String = "
-    #version 330 core
-
-    in vec4 v_color;
-
-    void main() {
-      gl_FragColor = v_color;
+  // building the vertex buffer, which contains all the vertices that we will draw
+  let vertex_buffer = {
+    #[derive(Copy, Clone)]
+    struct Vertex {
+      position: [f32; 2],
+      tex_coords: [f32; 2],
     }
-  ".to_string();
 
-  let components = vec!(
-    (gl::VERTEX_SHADER, vertex_shader),
-    (gl::FRAGMENT_SHADER, fragment_shader),
-  );
+    implement_vertex!(Vertex, position, tex_coords);
 
-  Shader::new(gl, components.into_iter())
-}
+    glium::VertexBuffer::new(&window,
+      &[
+        Vertex { position: [-1.0, -1.0], tex_coords: [0.0, 0.0] },
+        Vertex { position: [-1.0,  1.0], tex_coords: [0.0, 1.0] },
+        Vertex { position: [ 1.0,  1.0], tex_coords: [1.0, 1.0] },
+        Vertex { position: [ 1.0, -1.0], tex_coords: [1.0, 0.0] }
+      ]
+    ).unwrap()
+  };
 
-fn make_window(sdl: &sdl2::Sdl) -> sdl2::video::Window {
-  sdl2::video::gl_attr::set_context_profile(sdl2::video::GLProfile::Core);
-  sdl2::video::gl_attr::set_context_version(3, 3);
+  // building the index buffer
+  let index_buffer =
+    glium::IndexBuffer::new(
+      &window,
+      glium::index::PrimitiveType::TriangleStrip,
+      &[1 as u16, 2, 0, 3],
+    ).unwrap();
 
-  // Open the window as fullscreen at the current resolution.
-  let mut window =
-    sdl2::video::WindowBuilder::new(
-      &sdl,
-      "Raytrace",
-      WINDOW_WIDTH, WINDOW_HEIGHT,
-    );
+  // compiling shaders and linking them together
+  let program = program!(&window,
+    330 => {
+      vertex: "
+        #version 330
 
-  let window = window.position_centered();
-  window.opengl();
+        uniform mat4 matrix;
 
-  window.build().unwrap()
-}
+        in vec2 position;
+        in vec2 tex_coords;
 
-fn make_vao<'a, 'b:'a>(
-  gl: &'a mut GLContext,
-  shader: &Shader<'b>,
-) -> GLArray<'b, RGB> {
-  let attribs = [
-    VertexAttribData {
-      name: "color",
-      size: 3,
-      unit: GLType::Float,
+        out vec2 v_tex_coords;
+
+        void main() {
+          gl_Position = matrix * vec4(position, 0.0, 1.0);
+          v_tex_coords = tex_coords;
+        }
+      ",
+
+      fragment: "
+        #version 330
+        uniform sampler2D tex;
+        in vec2 v_tex_coords;
+        out vec4 f_color;
+
+        void main() {
+          f_color = texture(tex, v_tex_coords);
+        }
+      "
     },
-  ];
+  ).unwrap();
 
-  let capacity = WINDOW_WIDTH as usize * WINDOW_HEIGHT as usize;
-  let vbo = GLBuffer::new(gl, capacity);
-
-  GLArray::new(
-    gl,
-    shader,
-    &attribs,
-    DrawMode::Points,
-    vbo,
-  )
-}
-
-fn process_events(event_pump: &mut sdl2::event::EventPump) -> bool {
   loop {
-    match event_pump.poll_event() {
-      None => {
-        return true;
-      },
-      Some(Event::Quit {..}) => {
-        return false;
-      },
-      Some(Event::AppTerminating {..}) => {
-        return false;
-      },
-      _ => {},
+    use glium::Surface;
+
+    // building the uniforms
+    let uniforms = uniform! {
+      matrix: [
+        [1.0, 0.0, 0.0, 0.0],
+        [0.0, 1.0, 0.0, 0.0],
+        [0.0, 0.0, 1.0, 0.0],
+        [0.0, 0.0, 0.0, 1.0f32]
+      ],
+      tex: &opengl_texture
+    };
+
+    let mut target = window.draw();
+    target.clear_color(0.0, 0.0, 0.0, 0.0);
+    target.draw(&vertex_buffer, &index_buffer, &program, &uniforms, &Default::default()).unwrap();
+    target.finish().unwrap();
+
+    for event in window.poll_events() {
+      if let glutin::Event::Closed = event {
+        return
+      }
     }
   }
 }
