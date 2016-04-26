@@ -6,11 +6,13 @@ use std::io::Read;
 
 use main::{WINDOW_WIDTH, WINDOW_HEIGHT, RGB};
 
+pub struct Object {
+  pub center: [f32; 3],
+  pub radius: f32,
+}
+
 pub struct T {
-  pub obj1_center: [f32; 3],
-  pub obj1_radius: f32,
-  pub obj2_center: [f32; 3],
-  pub obj2_radius: f32,
+  pub objects: Vec<Object>,
   pub fovy: f32,
   pub eye: [f32; 3],
   pub look: [f32; 3],
@@ -21,9 +23,7 @@ impl T {
   pub fn render(&self) -> Vec<RGB> {
     let (device, ctx, queue) = opencl::util::create_compute_context().unwrap();
 
-    let len = WINDOW_WIDTH as usize * WINDOW_HEIGHT as usize;
-
-    let output_buffer: CLBuffer<RGB> = ctx.create_buffer(len, opencl::cl::CL_MEM_WRITE_ONLY);
+    let num_pixels = WINDOW_WIDTH as usize * WINDOW_HEIGHT as usize;
 
     let program = {
       let mut file = std::fs::File::open("src/kernel.cl").unwrap();
@@ -40,17 +40,23 @@ impl T {
     let mut arg = 0;
     kernel.set_arg(arg, &w)                ; arg = arg + 1;
     kernel.set_arg(arg, &h)                ; arg = arg + 1;
-    kernel.set_arg(arg, &self.obj1_center) ; arg = arg + 1;
-    kernel.set_arg(arg, &self.obj1_radius) ; arg = arg + 1;
-    kernel.set_arg(arg, &self.obj2_center) ; arg = arg + 1;
-    kernel.set_arg(arg, &self.obj2_radius) ; arg = arg + 1;
     kernel.set_arg(arg, &self.fovy)        ; arg = arg + 1;
     kernel.set_arg(arg, &self.eye)         ; arg = arg + 1;
     kernel.set_arg(arg, &self.look)        ; arg = arg + 1;
     kernel.set_arg(arg, &self.up)          ; arg = arg + 1;
+
+    let objects: &[Object] = &self.objects;
+    let object_buffer: CLBuffer<Object> = ctx.create_buffer(objects.len(), opencl::cl::CL_MEM_READ_ONLY);
+    queue.write(&object_buffer, &&objects[..], ());
+    kernel.set_arg(arg, &object_buffer)    ; arg = arg + 1;
+
+    let num_objects = objects.len() as u32;
+    kernel.set_arg(arg, &num_objects)      ; arg = arg + 1;
+
+    let output_buffer: CLBuffer<RGB> = ctx.create_buffer(num_pixels, opencl::cl::CL_MEM_WRITE_ONLY);
     kernel.set_arg(arg, &output_buffer)    ; arg = arg + 1;
 
-    let event = queue.enqueue_async_kernel(&kernel, len, None, ());
+    let event = queue.enqueue_async_kernel(&kernel, num_pixels, None, ());
 
     queue.get(&output_buffer, &event)
   }

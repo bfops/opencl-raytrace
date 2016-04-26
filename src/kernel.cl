@@ -1,15 +1,15 @@
 // Doesn't return 0 so that rays can bounce without bumping.
-float toi(
+float sphere_toi(
   const float3 eye,
   const float3 look,
 
-  const float3 sphere,
+  const float3 center,
   const float radius)
 {
   // quadratic coefficients
   float a = dot(look, look);
-  float b = 2 * dot(eye - sphere, look);
-  float c = dot(sphere, sphere) + dot(eye, eye) - dot(eye, sphere) - radius * radius;
+  float b = 2 * dot(eye - center, look);
+  float c = dot(center, center) + dot(eye, eye) - dot(eye, center) - radius * radius;
 
   // discriminant
   float d = b*b - 4*a*c;
@@ -116,26 +116,37 @@ typedef struct {
   float b;
 } RGB;
 
+RGB rgb(float3 xyz) {
+  RGB r;
+  r.r = xyz.x;
+  r.g = xyz.y;
+  r.b = xyz.z;
+  return r;
+}
+
+typedef struct {
+  float cx, cy, cz;
+  float radius;
+} Object;
+
 __kernel void render(
   const unsigned int window_width,
   const unsigned int window_height,
-
-  const float3 obj1_center,
-  const float obj1_radius,
-  const float3 obj2_center,
-  const float obj2_radius,
 
   const float fovy,
   float3 eye,
   const float3 look,
   const float3 up,
 
+  __global const Object* objects,
+  const unsigned int num_objects,
+
   __global RGB * output)
 {
-  int i = get_global_id(0);
+  int id = get_global_id(0);
 
-  const int x_pix = i % window_width;
-  const int y_pix = i / window_width;
+  const int x_pix = id % window_width;
+  const int y_pix = id / window_width;
 
   float4 world_pos =
     vmult(view_to_world(eye, look, up),
@@ -145,48 +156,21 @@ __kernel void render(
 
   float3 ray = normalize((world_pos / world_pos.w).xyz - eye);
 
-  float3 color = {1, 1, 1};
+  float toi = HUGE_VALF;
+  for (unsigned int i = 0; i < num_objects; ++i) {
+    float3 center = (float3)(objects[i].cx, objects[i].cy, objects[i].cz);
+    float this_toi = sphere_toi(eye, ray, center, objects[i].radius);
 
-  int max_bounces = 1;
-  // The number of casts is the number of bounces - 1.
-  for (int cast = 0; cast <= max_bounces; ++cast) {
-    float toi1 = toi(eye, ray, obj1_center, obj1_radius);
-    float toi2 = toi(eye, ray, obj2_center, obj2_radius);
-
-    if (toi1 == HUGE_VALF && toi2 == HUGE_VALF) {
-      output[i].r = 0;
-      output[i].g = 0;
-      output[i].b = 0;
-      return;
+    if (this_toi >= toi) {
+      continue;
     }
 
-    if (toi1 < toi2) {
-      float3 obj_color = {1, 0, 0};
-      color *= obj_color;
-
-      float3 intersection = eye + toi1 * ray;
-      float3 normal = normalize(intersection - obj1_center);
-      float directness = -dot(normal, ray) / length(ray);
-
-      if (directness < 0) {
-        directness = 0;
-      }
-
-      color *= directness;
-
-      eye = intersection;
-      ray = rotate_vec(-look, normal);
-    } else {
-      // We hit the light.
-
-      output[i].r = color[0];
-      output[i].g = color[1];
-      output[i].b = color[2];
-      return;
-    }
+    toi = this_toi;
   }
 
-  output[i].r = 1;
-  output[i].g = 0;
-  output[i].b = 1;
+  if (toi == HUGE_VALF) {
+    output[id] = rgb((float3)(0, 0, 0));
+  } else {
+    output[id] = rgb((float3)(1, 0, 0));
+  }
 }
