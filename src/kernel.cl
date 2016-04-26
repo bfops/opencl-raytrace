@@ -126,6 +126,12 @@ mat4 view_to_world(float3 eye, float3 look, float3 up) {
   return r;
 }
 
+typedef struct {
+  float r;
+  float g;
+  float b;
+} RGB;
+
 __kernel void render(
   const unsigned int window_width,
   const unsigned int window_height,
@@ -140,7 +146,7 @@ __kernel void render(
   const float3 look,
   const float3 up,
 
-  __global float * output)
+  __global RGB * output)
 {
   int i = get_global_id(0);
 
@@ -155,7 +161,6 @@ __kernel void render(
 
   float3 ray = normalize((world_pos / world_pos.w).xyz - eye);
 
-  i = i * 3;
   float3 color = {1, 1, 1};
 
   int max_bounces = 1;
@@ -165,9 +170,9 @@ __kernel void render(
     float toi2 = toi(eye, ray, obj2_center, obj2_radius);
 
     if (toi1 == HUGE_VALF && toi2 == HUGE_VALF) {
-      output[i+0] = 0;
-      output[i+1] = 0;
-      output[i+2] = 0;
+      output[i].r = 0;
+      output[i].g = 0;
+      output[i].b = 0;
       return;
     }
 
@@ -190,14 +195,14 @@ __kernel void render(
     } else {
       // We hit the light.
 
-      output[i+0] = color[0];
-      output[i+1] = color[1];
-      output[i+2] = color[2];
+      output[i].r = color[0];
+      output[i].g = color[1];
+      output[i].b = color[2];
       return;
     }
   }
 
-  output[i+0] = 1;
-  output[i+1] = 0;
-  output[i+2] = 1;
+  output[i].r = 1;
+  output[i].g = 0;
+  output[i].b = 1;
 }

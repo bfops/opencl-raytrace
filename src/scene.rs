@@ -36,19 +36,19 @@ impl T {
     let kernel = program.create_kernel("render");
     let w = WINDOW_WIDTH as u32;
     let h = WINDOW_HEIGHT as u32;
-    kernel.set_arg(0, &w);
-    kernel.set_arg(1, &h);
-    kernel.set_arg(2, &self.obj1_center);
-    kernel.set_arg(3, &self.obj1_radius);
-    kernel.set_arg(4, &self.obj2_center);
-    kernel.set_arg(5, &self.obj2_radius);
-    kernel.set_arg(6, &self.fovy);
-    kernel.set_arg(7, &self.eye);
-    kernel.set_arg(8, &self.look);
-    kernel.set_arg(9, &self.up);
 
-    // This is sketchy; we "implicitly cast" output_buffer from a CLBuffer<RGB> to a CLBuffer<f32>.
-    kernel.set_arg(10, &output_buffer);
+    let mut arg = 0;
+    kernel.set_arg(arg, &w)                ; arg = arg + 1;
+    kernel.set_arg(arg, &h)                ; arg = arg + 1;
+    kernel.set_arg(arg, &self.obj1_center) ; arg = arg + 1;
+    kernel.set_arg(arg, &self.obj1_radius) ; arg = arg + 1;
+    kernel.set_arg(arg, &self.obj2_center) ; arg = arg + 1;
+    kernel.set_arg(arg, &self.obj2_radius) ; arg = arg + 1;
+    kernel.set_arg(arg, &self.fovy)        ; arg = arg + 1;
+    kernel.set_arg(arg, &self.eye)         ; arg = arg + 1;
+    kernel.set_arg(arg, &self.look)        ; arg = arg + 1;
+    kernel.set_arg(arg, &self.up)          ; arg = arg + 1;
+    kernel.set_arg(arg, &output_buffer)    ; arg = arg + 1;
 
     let event = queue.enqueue_async_kernel(&kernel, len, None, ());
 
