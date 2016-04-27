@@ -75,7 +75,7 @@ pub fn main() {
     }
   }
 
-  let opengl_texture = glium::texture::Texture2d::new(&window, rendered_2d).unwrap();
+  let texture = glium::texture::Texture2d::new(&window, rendered_2d).unwrap();
 
   // building the vertex buffer, which contains all the vertices that we will draw
   let vertex_buffer = {
@@ -148,7 +148,7 @@ pub fn main() {
         [0.0, 0.0, 1.0, 0.0],
         [0.0, 0.0, 0.0, 1.0f32]
       ],
-      tex: &opengl_texture
+      tex: &texture,
     };
 
     let mut target = window.draw();
