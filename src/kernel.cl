@@ -158,29 +158,51 @@ Object parse_object(__global const float* data) {
   return r;
 }
 
+typedef struct {
+  float3 origin;
+  float3 direction;
+} Ray;
+
+void raycast(
+  Ray ray,
+  
+  __global const float* objects,
+  const unsigned int num_objects,
+
+  float* toi,
+  Object* collision
+) {
+  *toi = HUGE_VALF;
+
+  for (unsigned int i = 0; i < num_objects; ++i) {
+    Object object = parse_object((Object*)objects + i);
+    float this_toi = sphere_toi(ray.origin, ray.direction, pack_float3(object.center), object.radius);
+
+    if (this_toi >= *toi) {
+      continue;
+    }
+
+    *toi = this_toi;
+    *collision = object;
+  }
+}
+
 float3 raytrace(
-  float3 eye,
-  float3 direction,
+  Ray ray,
 
   __global const float* objects,
   const unsigned int num_objects
 ) {
-  float toi = HUGE_VALF;
-  float3 r = (float3)(0, 0, 0);
+  float toi;
+  Object collision;
 
-  for (unsigned int i = 0; i < num_objects; ++i) {
-    Object object = parse_object((Object*)objects + i);
-    float this_toi = sphere_toi(eye, direction, pack_float3(object.center), object.radius);
+  raycast(ray, objects, num_objects, &toi, &collision);
 
-    if (this_toi >= toi) {
-      continue;
-    }
-
-    toi = this_toi;
-    r = pack_float3(object.color);
+  if (toi == HUGE_VALF) {
+    return (float3)(0, 0, 0);
   }
 
-  return r;
+  return pack_float3(collision.color);
 }
 
 __kernel void render(
@@ -208,7 +230,9 @@ __kernel void render(
     (float4)(x_pix, y_pix, 1, 1)
   ));
 
-  float3 ray = normalize((world_pos / world_pos.w).xyz - eye);
+  Ray ray;
+  ray.origin = eye;
+  ray.direction = normalize((world_pos / world_pos.w).xyz - eye);
 
-  output[id] = rgb(raytrace(eye, ray, objects, num_objects));
+  output[id] = rgb(raytrace(ray, objects, num_objects));
 }
