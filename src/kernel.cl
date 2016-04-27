@@ -49,7 +49,7 @@ float4 vmult(mat4 m, float4 v) {
     );
 }
 
-mat4 screen_to_view(unsigned int w, unsigned int h, float fovy) {
+mat4 screen_to_view(uint w, uint h, float fovy) {
   float aspect = (float)w / (float)h;
 
   float b = tan(fovy / 2);
@@ -158,14 +158,14 @@ void raycast(
   Ray ray,
   
   __global const float* objects,
-  const unsigned int num_objects,
+  const uint num_objects,
 
   float* toi,
   Object* collision
 ) {
   *toi = HUGE_VALF;
 
-  for (unsigned int i = 0; i < num_objects; ++i) {
+  for (uint i = 0; i < num_objects; ++i) {
     Object object = parse_object((Object*)objects + i);
     float this_toi = sphere_toi(ray.origin, ray.direction, pack_float3(object.center), object.radius);
 
@@ -204,13 +204,14 @@ float3 random_reflect(uint2* rand_state, float3 x, float3 y, float3 z) {
 
 float3 pathtrace(
   Ray ray,
-  unsigned int max_depth,
+  uint max_depth,
+  float3 ambient,
   uint2* rand_state,
   __global const float* objects,
-  const unsigned int num_objects
+  const uint num_objects
 ) {
   if (max_depth == 0) {
-    return (float3)(0, 0, 0);
+    return ambient;
   }
 
   float toi;
@@ -219,7 +220,7 @@ float3 pathtrace(
   raycast(ray, objects, num_objects, &toi, &collided_object);
 
   if (toi == HUGE_VALF) {
-    return (float3)(0, 0, 0);
+    return ambient;
   }
 
   float3 emitted = (float3)(collided_object.emittance);
@@ -237,14 +238,14 @@ float3 pathtrace(
   }
   reflected_ray.origin = collision_point + 0.1f * reflected_ray.direction;
 
-  float3 reflected = pathtrace(reflected_ray, max_depth - 1, rand_state, objects, num_objects);
+  float3 reflected = pathtrace(reflected_ray, max_depth - 1, ambient, rand_state, objects, num_objects);
 
-  return pack_float3(collided_object.color) * (emitted + reflected);
+  return pack_float3(collided_object.color) * (ambient + emitted + reflected);
 }
 
 __kernel void render(
-  const unsigned int window_width,
-  const unsigned int window_height,
+  const uint window_width,
+  const uint window_height,
 
   const float fovy,
   float3 eye,
@@ -252,9 +253,10 @@ __kernel void render(
   const float3 up,
 
   ulong random_seed,
+  float3 ambient_light,
 
   __global const float* objects,
-  const unsigned int num_objects,
+  const uint num_objects,
 
   __global RGB * output)
 {
@@ -280,5 +282,5 @@ __kernel void render(
       (uint)((random_seed & 0xFFFFFFFF00000000) >> 32)
     );
 
-  output[id] = rgb(pathtrace(ray, 2, &rand_state, objects, num_objects));
+  output[id] = rgb(pathtrace(ray, 2, ambient_light, &rand_state, objects, num_objects));
 }

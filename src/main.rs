@@ -49,15 +49,16 @@ pub fn main() {
 
   let scene =
     scene::T {
-      objects :
+      objects       :
         vec!(
           scene::Object { center: [-1.0,  0.0,  -4.0], radius: 1.0,  color: [1.0, 0.0, 0.0], emittance: 0.0 },
           scene::Object { center: [ 20.0, 10.0, 20.0], radius: 10.0, color: [1.0, 1.0, 1.0], emittance: 1.0 },
         ),
-      fovy    : std::f32::consts::FRAC_PI_2,
-      eye     : [0.0, 0.0,  0.0],
-      look    : [0.0, 0.0, -1.0],
-      up      : [0.0, 1.0,  0.0],
+      fovy          : std::f32::consts::FRAC_PI_2,
+      eye           : [0.0, 0.0,  0.0],
+      look          : [0.0, 0.0, -1.0],
+      up            : [0.0, 1.0,  0.0],
+      ambient_light : [0.01; 3],
     };
 
   let mut rendered_2d = vec!();
