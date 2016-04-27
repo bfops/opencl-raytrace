@@ -158,6 +158,31 @@ Object parse_object(__global const float* data) {
   return r;
 }
 
+float3 raytrace(
+  float3 eye,
+  float3 direction,
+
+  __global const float* objects,
+  const unsigned int num_objects
+) {
+  float toi = HUGE_VALF;
+  float3 r = (float3)(0, 0, 0);
+
+  for (unsigned int i = 0; i < num_objects; ++i) {
+    Object object = parse_object((Object*)objects + i);
+    float this_toi = sphere_toi(eye, direction, pack_float3(object.center), object.radius);
+
+    if (this_toi >= toi) {
+      continue;
+    }
+
+    toi = this_toi;
+    r = pack_float3(object.color);
+  }
+
+  return r;
+}
+
 __kernel void render(
   const unsigned int window_width,
   const unsigned int window_height,
@@ -185,18 +210,5 @@ __kernel void render(
 
   float3 ray = normalize((world_pos / world_pos.w).xyz - eye);
 
-  float toi = HUGE_VALF;
-  output[id] = rgb((float3)(0, 0, 0));
-
-  for (unsigned int i = 0; i < num_objects; ++i) {
-    Object object = parse_object(objects + i*sizeof(Object)/sizeof(float));
-    float this_toi = sphere_toi(eye, ray, pack_float3(object.center), object.radius);
-
-    if (this_toi >= toi) {
-      continue;
-    }
-
-    toi = this_toi;
-    output[id] = rgb(pack_float3(object.color));
-  }
+  output[id] = rgb(raytrace(eye, ray, objects, num_objects));
 }
