@@ -4,28 +4,29 @@ use std;
 use std::borrow::Borrow;
 use std::io::Read;
 
-use main::{WINDOW_WIDTH, WINDOW_HEIGHT, RGB};
+use main::RGB;
 
 #[repr(C)]
 pub struct Object {
-  pub center: [f32; 3],
-  pub radius: f32,
-  pub color: [f32; 3],
+  pub center    : [f32; 3],
+  pub radius    : f32,
+  pub color     : [f32; 3],
+  pub emittance : f32,
 }
 
 pub struct T {
-  pub objects: Vec<Object>,
-  pub fovy: f32,
-  pub eye: [f32; 3],
-  pub look: [f32; 3],
-  pub up: [f32; 3],
+  pub objects : Vec<Object>,
+  pub fovy    : f32,
+  pub eye     : [f32; 3],
+  pub look    : [f32; 3],
+  pub up      : [f32; 3],
 }
 
 impl T {
-  pub fn render(&self) -> Vec<RGB> {
+  pub fn render(&self, width: u32, height: u32) -> Vec<RGB> {
     let (device, ctx, queue) = opencl::util::create_compute_context().unwrap();
 
-    let num_pixels = WINDOW_WIDTH as usize * WINDOW_HEIGHT as usize;
+    let num_pixels = width as usize * height as usize;
 
     let program = {
       let mut file = std::fs::File::open("src/kernel.cl").unwrap();
@@ -36,16 +37,17 @@ impl T {
     program.build(&device).unwrap();
 
     let kernel = program.create_kernel("render");
-    let w = WINDOW_WIDTH as u32;
-    let h = WINDOW_HEIGHT as u32;
 
     let mut arg = 0;
-    kernel.set_arg(arg, &w)                ; arg = arg + 1;
-    kernel.set_arg(arg, &h)                ; arg = arg + 1;
+    kernel.set_arg(arg, &width)            ; arg = arg + 1;
+    kernel.set_arg(arg, &height)           ; arg = arg + 1;
     kernel.set_arg(arg, &self.fovy)        ; arg = arg + 1;
     kernel.set_arg(arg, &self.eye)         ; arg = arg + 1;
     kernel.set_arg(arg, &self.look)        ; arg = arg + 1;
     kernel.set_arg(arg, &self.up)          ; arg = arg + 1;
+
+    let random_seed: u64 = 0x123456789abcdef0;
+    kernel.set_arg(arg, &random_seed)      ; arg = arg + 1;
 
     let objects: &[Object] = &self.objects;
     let object_buffer: CLBuffer<Object> = ctx.create_buffer(objects.len(), opencl::cl::CL_MEM_READ_ONLY);

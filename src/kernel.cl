@@ -9,7 +9,8 @@ float sphere_toi(
   // quadratic coefficients
   float a = dot(look, look);
   float b = 2 * dot(eye - center, look);
-  float c = dot(center, center) + dot(eye, eye) - dot(eye, center) - radius * radius;
+  float3 to_center = eye - center;
+  float c = dot(to_center, to_center) - radius*radius;
 
   // discriminant
   float d = b*b - 4*a*c;
@@ -29,18 +30,6 @@ float sphere_toi(
   }
 
   return s2;
-}
-
-float3 rotate_vec(
-  const float3 vec,
-  const float3 axis)
-{
-  float3 r1 = {2*axis[0]*axis[0] - 1, 2*axis[0]*axis[1], 2*axis[0]*axis[2]};
-  float3 r2 = {2*axis[0]*axis[1], 2*axis[1]*axis[1] - 1, 2*axis[1]*axis[2]};
-  float3 r3 = {2*axis[0]*axis[2], 2*axis[1]*axis[2], 2*axis[2]*axis[2] - 1};
-
-  float3 r = {dot(r1, vec), dot(r2, vec), dot(r3, vec)};
-  return r;
 }
 
 typedef struct {
@@ -134,6 +123,7 @@ typedef struct {
   float3_parse center;
   float radius;
   float3_parse color;
+  float emittance;
 } Object;
 
 float parse_float(__global const float** data) {
@@ -152,9 +142,10 @@ float3_parse parse_float3(__global const float** data) {
 
 Object parse_object(__global const float* data) {
   Object r;
-  r.center = parse_float3(&data);
-  r.radius = parse_float(&data);
-  r.color = parse_float3(&data);
+  r.center    = parse_float3(&data);
+  r.radius    = parse_float(&data);
+  r.color     = parse_float3(&data);
+  r.emittance = parse_float(&data);
   return r;
 }
 
@@ -187,22 +178,68 @@ void raycast(
   }
 }
 
-float3 raytrace(
-  Ray ray,
+// Thank you to http://cas.ee.ic.ac.uk/people/dt10/research/rngs-gpu-mwc64x.html.
+float rand(uint2 *state)
+{
+  enum { A=4294883355U};
+  uint x=(*state).x, c=(*state).y;  // Unpack the state
+  uint res=x^c;                     // Calculate the result
+  uint hi=mul_hi(x,A);              // Step the RNG
+  x=x*A+c;
+  c=hi+(x<c);
+  *state=(uint2)(x,c);              // Pack the state back up
+  return (float)res / (float)0xFFFFFFFF;                       // Return the next result
+}
 
+float3 random_reflect(uint2* rand_state, float3 x, float3 y, float3 z) {
+  float azimuth = rand(rand_state) * 2 * 3.14;
+  float altitude = rand(rand_state) * 3.14 / 2;
+
+  float ky = sin(altitude);
+  float kxz = cos(altitude);
+  float kx = cos(azimuth)*kxz;
+  float kz = sin(azimuth)*kxz;
+  return kx*x + ky*y + kz*z;
+}
+
+float3 pathtrace(
+  Ray ray,
+  unsigned int max_depth,
+  uint2* rand_state,
   __global const float* objects,
   const unsigned int num_objects
 ) {
-  float toi;
-  Object collision;
+  if (max_depth == 0) {
+    return (float3)(0, 0, 0);
+  }
 
-  raycast(ray, objects, num_objects, &toi, &collision);
+  float toi;
+  Object collided_object;
+
+  raycast(ray, objects, num_objects, &toi, &collided_object);
 
   if (toi == HUGE_VALF) {
     return (float3)(0, 0, 0);
   }
 
-  return pack_float3(collision.color);
+  float3 emitted = (float3)(collided_object.emittance);
+
+  float3 collision_point = ray.origin + toi*ray.direction;
+  float3 normal = (collision_point - pack_float3(collided_object.center)) / collided_object.radius;
+
+  // TODO: loop + accumulators
+  Ray reflected_ray;
+  {
+    float3 y = normal;
+    float3 x = normalize(cross((float3)(1, 0, 0), y));
+    float3 z = normalize(cross(y, x));
+    reflected_ray.direction = random_reflect(rand_state, x, y, z);
+  }
+  reflected_ray.origin = collision_point + 0.1f * reflected_ray.direction;
+
+  float3 reflected = pathtrace(reflected_ray, max_depth - 1, rand_state, objects, num_objects);
+
+  return pack_float3(collided_object.color) * (emitted + reflected);
 }
 
 __kernel void render(
@@ -213,6 +250,8 @@ __kernel void render(
   float3 eye,
   const float3 look,
   const float3 up,
+
+  ulong random_seed,
 
   __global const float* objects,
   const unsigned int num_objects,
@@ -234,5 +273,12 @@ __kernel void render(
   ray.origin = eye;
   ray.direction = normalize((world_pos / world_pos.w).xyz - eye);
 
-  output[id] = rgb(raytrace(ray, objects, num_objects));
+  random_seed = random_seed * id * id;
+  uint2 rand_state = 
+    (uint2)(
+      (uint)(random_seed & 0xFFFFFFFF), 
+      (uint)((random_seed & 0xFFFFFFFF00000000) >> 32)
+    );
+
+  output[id] = rgb(pathtrace(ray, 2, &rand_state, objects, num_objects));
 }
