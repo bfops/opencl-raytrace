@@ -63,11 +63,13 @@ pub fn main() {
 
   let mut rendered_2d = vec!();
   {
-    let rendered = scene.render(WINDOW_WIDTH, WINDOW_HEIGHT);
-    for y in 0 .. WINDOW_HEIGHT as usize {
+    let w = 2 * WINDOW_WIDTH;
+    let h = 2 * WINDOW_HEIGHT;
+    let rendered = scene.render(w, h);
+    for y in 0 .. h as usize {
       let mut row = vec!();
-      for x in 0 .. WINDOW_WIDTH as usize {
-        row.push(rendered[y * WINDOW_WIDTH as usize + x]);
+      for x in 0 .. w as usize {
+        row.push(rendered[y * w as usize + x]);
       }
       rendered_2d.push(row);
     }

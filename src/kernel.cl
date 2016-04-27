@@ -244,8 +244,8 @@ float3 pathtrace(
 }
 
 __kernel void render(
-  const uint window_width,
-  const uint window_height,
+  const uint image_width,
+  const uint image_height,
 
   const float fovy,
   float3 eye,
@@ -262,12 +262,12 @@ __kernel void render(
 {
   int id = get_global_id(0);
 
-  const int x_pix = id % window_width;
-  const int y_pix = id / window_width;
+  const int x_pix = id % image_width;
+  const int y_pix = id / image_width;
 
   float4 world_pos =
     vmult(view_to_world(eye, look, up),
-    vmult(screen_to_view(window_width, window_height, fovy),
+    vmult(screen_to_view(image_width, image_height, fovy),
     (float4)(x_pix, y_pix, 1, 1)
   ));
 
