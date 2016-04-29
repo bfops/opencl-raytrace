@@ -30,7 +30,7 @@ impl T {
     let num_pixels = width as usize * height as usize;
 
     let program = {
-      let mut file = std::fs::File::open("src/kernel.cl").unwrap();
+      let mut file = std::fs::File::open("cl/main.cl").unwrap();
       let mut ker = String::new();
       file.read_to_string(&mut ker).unwrap();
       ctx.create_program_from_source(ker.borrow())
