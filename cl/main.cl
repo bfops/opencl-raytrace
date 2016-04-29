@@ -184,7 +184,7 @@ float rand(mwc64x_state_t* rand_state) {
   return (float)MWC64X_NextUint(rand_state) / (float)UINT_MAX;
 }
 
-float3 random_reflect(uint2* rand_state, float3 x, float3 y, float3 z) {
+float3 random_reflect(mwc64x_state_t* rand_state, float3 x, float3 y, float3 z) {
   float azimuth = rand(rand_state) * 2 * 3.14;
   float altitude = rand(rand_state) * 3.14 / 2;
 
@@ -199,7 +199,7 @@ float3 pathtrace(
   Ray ray,
   uint max_depth,
   float3 ambient,
-  uint2* rand_state,
+  mwc64x_state_t* rand_state,
   __global const float* objects,
   const uint num_objects
 ) {
@@ -236,6 +236,13 @@ float3 pathtrace(
   return pack_float3(collided_object.color) * (ambient + emitted + reflected);
 }
 
+mwc64x_state_t init_rand_state(ulong random_seed) {
+  mwc64x_state_t rand_state;
+  rand_state.x = (uint)(random_seed & 0xFFFFFFFF); 
+  rand_state.c = (random_seed & 0xFFFFFFFF00000000) >> 32;
+  return rand_state;
+}
+
 __kernel void render(
   const uint image_width,
   const uint image_height,
@@ -269,11 +276,8 @@ __kernel void render(
   ray.direction = normalize((world_pos / world_pos.w).xyz - eye);
 
   random_seed = random_seed * id * id;
-  uint2 rand_state = 
-    (uint2)(
-      (uint)(random_seed & 0xFFFFFFFF), 
-      (uint)((random_seed & 0xFFFFFFFF00000000) >> 32)
-    );
+  mwc64x_state_t rand_state = init_rand_state(random_seed);
+  MWC64X_Skip(&rand_state, 20);
 
   output[id] = rgb(pathtrace(ray, 2, ambient_light, &rand_state, objects, num_objects));
 }
