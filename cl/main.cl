@@ -1,3 +1,5 @@
+#include "cl/mwc64x/cl/mwc64x.cl"
+
 // Doesn't return 0 so that rays can bounce without bumping.
 float sphere_toi(
   const float3 eye,
@@ -178,17 +180,8 @@ void raycast(
   }
 }
 
-// Thank you to http://cas.ee.ic.ac.uk/people/dt10/research/rngs-gpu-mwc64x.html.
-float rand(uint2 *state)
-{
-  enum { A=4294883355U};
-  uint x=(*state).x, c=(*state).y;  // Unpack the state
-  uint res=x^c;                     // Calculate the result
-  uint hi=mul_hi(x,A);              // Step the RNG
-  x=x*A+c;
-  c=hi+(x<c);
-  *state=(uint2)(x,c);              // Pack the state back up
-  return (float)res / (float)0xFFFFFFFF;                       // Return the next result
+float rand(mwc64x_state_t* rand_state) {
+  return (float)MWC64X_NextUint(rand_state) / (float)UINT_MAX;
 }
 
 float3 random_reflect(uint2* rand_state, float3 x, float3 y, float3 z) {
