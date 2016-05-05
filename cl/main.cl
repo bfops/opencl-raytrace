@@ -193,7 +193,6 @@ float rand(mwc64x_state_t* rand_state) {
 }
 
 float3 perturb(mwc64x_state_t* rand_state, float3 x, float3 y, float3 z) {
-  return normalize((float3)(rand(rand_state), rand(rand_state), rand(rand_state)) - (float3)(0.5));
   const float azimuth = rand(rand_state) * 2 * 3.14;
   const float altitude = 3.14 * (0.5 - rand(rand_state));
   return from_euler(x, y, z, azimuth, altitude);
@@ -234,8 +233,8 @@ float3 pathtrace(
 
     const float3 y = (float3)(0, 1, 0);//reflected;
     // TODO: find z/x better when normal ~= reflected
-    const float3 z = (float3)(0, 0, 1);//normalize(cross(normal, y));
-    const float3 x = (float3)(1, 0, 0);//normalize(cross(z, y));
+    const float3 z = normalize(cross(normal, y));
+    const float3 x = normalize(cross(z, y));
     do {
       reflected_ray.direction = perturb(rand_state, x, y, z);
     }
