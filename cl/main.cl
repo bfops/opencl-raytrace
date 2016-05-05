@@ -180,19 +180,23 @@ void raycast(
   }
 }
 
+float3 from_euler(float3 x, float3 y, float3 z, float azimuth, float altitude) {
+  const float ky = sin(altitude);
+  const float kxz = cos(altitude);
+  const float kz = sin(azimuth)*kxz;
+  const float kx = cos(azimuth)*kxz;
+  return kx*x + ky*y + kz*z;
+}
+
 float rand(mwc64x_state_t* rand_state) {
   return (float)MWC64X_NextUint(rand_state) / (float)UINT_MAX;
 }
 
-float3 random_reflect(mwc64x_state_t* rand_state, float3 x, float3 y, float3 z) {
-  float azimuth = rand(rand_state) * 2 * 3.14;
-  float altitude = rand(rand_state) * 3.14 / 2;
-
-  float ky = sin(altitude);
-  float kxz = cos(altitude);
-  float kx = cos(azimuth)*kxz;
-  float kz = sin(azimuth)*kxz;
-  return kx*x + ky*y + kz*z;
+float3 perturb(mwc64x_state_t* rand_state, float3 x, float3 y, float3 z) {
+  return normalize((float3)(rand(rand_state), rand(rand_state), rand(rand_state)) - (float3)(0.5));
+  const float azimuth = rand(rand_state) * 2 * 3.14;
+  const float altitude = 3.14 * (0.5 - rand(rand_state));
+  return from_euler(x, y, z, azimuth, altitude);
 }
 
 float3 pathtrace(
@@ -221,15 +225,25 @@ float3 pathtrace(
   float3 collision_point = ray.origin + toi*ray.direction;
   float3 normal = (collision_point - pack_float3(collided_object.center)) / collided_object.radius;
 
+  // TODO: cos_theta < 0?
   // TODO: loop + accumulators
   Ray reflected_ray;
   {
-    float3 y = normal;
-    float3 x = normalize(cross((float3)(1, 0, 0), y));
-    float3 z = normalize(cross(y, x));
-    reflected_ray.direction = random_reflect(rand_state, x, y, z);
+    float cos_theta = dot(ray.direction, normal);
+    const float3 reflected = ray.direction - 2*cos_theta*normal;
+    return (float3)((reflected.z + 1) / 2);
+
+    const float3 y = (float3)(0, 1, 0);//reflected;
+    // TODO: find z/x better when normal ~= reflected
+    const float3 z = (float3)(0, 0, 1);//normalize(cross(normal, y));
+    const float3 x = (float3)(1, 0, 0);//normalize(cross(z, y));
+    //do {
+      reflected_ray.direction = reflected;
+    //}
+    //while (dot(reflected_ray.direction, normal) < 0);
+
+    reflected_ray.origin = collision_point + 0.1f * reflected_ray.direction;
   }
-  reflected_ray.origin = collision_point + 0.1f * reflected_ray.direction;
 
   float3 reflected = pathtrace(reflected_ray, max_depth - 1, ambient, rand_state, objects, num_objects);
 
