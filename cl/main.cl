@@ -231,16 +231,15 @@ float3 pathtrace(
   {
     float cos_theta = dot(ray.direction, normal);
     const float3 reflected = ray.direction - 2*cos_theta*normal;
-    return (float3)((reflected.z + 1) / 2);
 
     const float3 y = (float3)(0, 1, 0);//reflected;
     // TODO: find z/x better when normal ~= reflected
     const float3 z = (float3)(0, 0, 1);//normalize(cross(normal, y));
     const float3 x = (float3)(1, 0, 0);//normalize(cross(z, y));
-    //do {
-      reflected_ray.direction = reflected;
-    //}
-    //while (dot(reflected_ray.direction, normal) < 0);
+    do {
+      reflected_ray.direction = perturb(rand_state, x, y, z);
+    }
+    while (dot(reflected_ray.direction, normal) < 0);
 
     reflected_ray.origin = collision_point + 0.1f * reflected_ray.direction;
   }

@@ -52,7 +52,7 @@ pub fn main() {
       objects       :
         vec!(
           scene::Object { center: [-1.0,  0.0,  -4.0], radius: 1.0,  color: [1.0, 0.0, 0.0], emittance: 0.0 },
-          scene::Object { center: [ 20.0, 10.0, 20.0], radius: 10.0, color: [1.0, 1.0, 1.0], emittance: 1.0 },
+          scene::Object { center: [ 30.0, 10.0,  4.0], radius: 10.0, color: [1.0, 1.0, 1.0], emittance: 1.0 },
         ),
       fovy          : std::f32::consts::FRAC_PI_2,
       eye           : [0.0, 0.0,  0.0],
@@ -63,8 +63,9 @@ pub fn main() {
 
   let mut rendered_2d = vec!();
   {
-    let w = 2 * WINDOW_WIDTH;
-    let h = 2 * WINDOW_HEIGHT;
+    let scale = 1 << 1;
+    let w = scale * WINDOW_WIDTH;
+    let h = scale * WINDOW_HEIGHT;
     let rendered = scene.render(w, h);
     for y in 0 .. h as usize {
       let mut row = vec!();
