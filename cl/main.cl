@@ -223,56 +223,49 @@ float3 perturb(mwc64x_state_t* rand_state, const float3 unperturbed, const float
 
 float3 pathtrace(
   Ray ray,
-  uint max_depth,
-  float3 ambient,
+  const uint max_depth,
+  const float3 ambient,
   mwc64x_state_t* rand_state,
   __global const float* objects,
   const uint num_objects
 ) {
-  if (max_depth == 0) {
-    return ambient;
-  }
+  float3 pixel_color = (float3)(0, 0, 0);
+  float3 attenuation = (float3)(1, 1, 1);
 
-  float toi;
-  Object collided_object;
+  for (int i = 0; i < max_depth; ++i) {
+    float toi;
+    Object collided_object;
 
-  raycast(ray, objects, num_objects, &toi, &collided_object);
+    raycast(ray, objects, num_objects, &toi, &collided_object);
 
-  if (toi == HUGE_VALF) {
-    return ambient;
-  }
+    if (toi == HUGE_VALF) {
+      pixel_color += attenuation * ambient;
+      break;
+    }
 
-  float3 light = ambient * (collided_object.reflectance + collided_object.transmittance);
+    attenuation *= collided_object.color;
 
-  light += (float3)(collided_object.emittance);
+    // TODO: consider removing ambient light and adding a large light "around" the whole world.
+    pixel_color += attenuation * ambient * (collided_object.reflectance + collided_object.transmittance);
+    pixel_color += attenuation * (float3)(collided_object.emittance);
 
-  const float3 collision_point = ray.origin + toi*ray.direction;
-  const float3 normal = (collision_point - collided_object.center) / collided_object.radius;
-  const float max_scatter_angle = 3.14 * collided_object.diffuseness;
+    const float3 collision_point = ray.origin + toi*ray.direction;
+    const float3 normal = (collision_point - collided_object.center) / collided_object.radius;
+    const float max_scatter_angle = 3.14 * collided_object.diffuseness;
 
-  float r = rand(rand_state);
+    float r = rand(rand_state);
 
-  // TODO: loop + accumulators instead of recursion
-  // TODO: consider removing ambient light and adding a large light "around" the whole world.
+    r -= collided_object.transmittance;
+    if (r <= 0) {
+      // TODO: cos_theta < 0?
+      Ray transmitted_ray;
+      const float3 unperturbed = ray.direction;
+      transmitted_ray.direction = perturb(rand_state, unperturbed, -normal, max_scatter_angle);
+      transmitted_ray.origin = collision_point + 0.1f * transmitted_ray.direction;
+      ray = transmitted_ray;
+      continue;
+    }
 
-  r -= collided_object.transmittance;
-  if (r <= 0) {
-    // TODO: cos_theta < 0?
-    Ray transmitted_ray;
-    const float3 unperturbed = ray.direction;
-    transmitted_ray.direction = perturb(rand_state, unperturbed, -normal, max_scatter_angle);
-    transmitted_ray.origin = collision_point + 0.1f * transmitted_ray.direction;
-
-    light +=
-      pathtrace(
-        transmitted_ray,
-        max_depth - 1,
-        ambient,
-        rand_state,
-        objects,
-        num_objects
-      );
-  } else {
     r -= collided_object.reflectance;
     if (r <= 0) {
       // TODO: cos_theta < 0?
@@ -281,20 +274,15 @@ float3 pathtrace(
       const float3 unperturbed = ray.direction - 2*cos_theta*normal;
       reflected_ray.direction = perturb(rand_state, unperturbed, normal, max_scatter_angle);
       reflected_ray.origin = collision_point + 0.1f * reflected_ray.direction;
+      ray = reflected_ray;
+      continue;
+    } 
 
-      light +=
-        pathtrace(
-          reflected_ray,
-          max_depth - 1,
-          ambient,
-          rand_state,
-          objects,
-          num_objects
-        );
-    }
+    // Ray is absorbed.
+    break;
   }
 
-  return collided_object.color * light;
+  return pixel_color;
 }
 
 mwc64x_state_t init_rand_state(ulong random_seed) {
