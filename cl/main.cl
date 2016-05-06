@@ -126,6 +126,7 @@ typedef struct {
   float radius;
   float3_parse color;
   float emittance;
+  float reflectance;
 } Object;
 
 float parse_float(__global const float** data) {
@@ -144,10 +145,11 @@ float3_parse parse_float3(__global const float** data) {
 
 Object parse_object(__global const float* data) {
   Object r;
-  r.center    = parse_float3(&data);
-  r.radius    = parse_float(&data);
-  r.color     = parse_float3(&data);
-  r.emittance = parse_float(&data);
+  r.center      = parse_float3(&data);
+  r.radius      = parse_float(&data);
+  r.color       = parse_float3(&data);
+  r.emittance   = parse_float(&data);
+  r.reflectance = parse_float(&data);
   return r;
 }
 
@@ -158,7 +160,7 @@ typedef struct {
 
 void raycast(
   Ray ray,
-  
+
   __global const float* objects,
   const uint num_objects,
 
@@ -241,14 +243,23 @@ float3 pathtrace(
     reflected_ray.origin = collision_point + 0.1f * reflected_ray.direction;
   }
 
-  float3 reflected = pathtrace(reflected_ray, max_depth - 1, ambient, rand_state, objects, num_objects);
+  const float3 reflected =
+    collided_object.reflectance *
+    pathtrace(
+      reflected_ray,
+      max_depth - 1,
+      ambient,
+      rand_state,
+      objects,
+      num_objects
+    );
 
   return pack_float3(collided_object.color) * (ambient + emitted + reflected);
 }
 
 mwc64x_state_t init_rand_state(ulong random_seed) {
   mwc64x_state_t rand_state;
-  rand_state.x = (uint)(random_seed & 0xFFFFFFFF); 
+  rand_state.x = (uint)(random_seed & 0xFFFFFFFF);
   rand_state.c = (random_seed & 0xFFFFFFFF00000000) >> 32;
   return rand_state;
 }
