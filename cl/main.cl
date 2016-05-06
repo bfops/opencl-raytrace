@@ -242,51 +242,58 @@ float3 pathtrace(
     return ambient;
   }
 
-  float3 emitted = (float3)(collided_object.emittance);
+  float3 light = ambient;
 
-  float3 collision_point = ray.origin + toi*ray.direction;
-  float3 normal = (collision_point - pack_float3(collided_object.center)) / collided_object.radius;
+  light += (float3)(collided_object.emittance);
 
-  // TODO: cos_theta < 0?
-  // TODO: loop + accumulators
-  Ray reflected_ray;
-  float cos_theta = dot(ray.direction, normal);
-  const float3 unperturbed = ray.direction - 2*cos_theta*normal;
+  const float3 collision_point = ray.origin + toi*ray.direction;
+  const float3 normal = (collision_point - pack_float3(collided_object.center)) / collided_object.radius;
   const float max_scatter_angle = 3.14 * collided_object.diffuseness;
 
-  reflected_ray.direction = perturb(rand_state, unperturbed, normal, max_scatter_angle);
-  reflected_ray.origin = collision_point + 0.1f * reflected_ray.direction;
-
-  float3 reflected = (float3)(0, 0, 0);
   float r = rand(rand_state);
+
+  // TODO: loop + accumulators instead of recursion
 
   r -= collided_object.transmittance;
   if (r <= 0) {
-    reflected +=
+    // TODO: cos_theta < 0?
+    Ray transmitted_ray;
+    const float3 unperturbed = ray.direction;
+    transmitted_ray.direction = perturb(rand_state, unperturbed, -normal, max_scatter_angle);
+    transmitted_ray.origin = collision_point + 0.1f * transmitted_ray.direction;
+
+    light +=
       pathtrace(
-        reflected_ray,
+        transmitted_ray,
         max_depth - 1,
         ambient,
         rand_state,
         objects,
         num_objects
       );
+  } else {
+    r -= collided_object.reflectance;
+    if (r <= 0) {
+      // TODO: cos_theta < 0?
+      Ray reflected_ray;
+      const float cos_theta = dot(ray.direction, normal);
+      const float3 unperturbed = 2*cos_theta*normal - ray.direction;
+      reflected_ray.direction = perturb(rand_state, unperturbed, normal, max_scatter_angle);
+      reflected_ray.origin = collision_point + 0.1f * reflected_ray.direction;
+
+      light +=
+        pathtrace(
+          reflected_ray,
+          max_depth - 1,
+          ambient,
+          rand_state,
+          objects,
+          num_objects
+        );
+    }
   }
 
-  r -= collided_object.reflectance;
-  if (r <= 0) {
-    reflected +=
-      pathtrace(
-        reflected_ray,
-        max_depth - 1,
-        ambient,
-        rand_state,
-        objects,
-        num_objects
-      );
-  }
-
-  return pack_float3(collided_object.color) * (ambient + emitted + reflected);
+  return pack_float3(collided_object.color) * light;
 }
 
 mwc64x_state_t init_rand_state(ulong random_seed) {
@@ -332,5 +339,9 @@ __kernel void render(
   mwc64x_state_t rand_state = init_rand_state(random_seed);
   MWC64X_Skip(&rand_state, 20);
 
+<<<<<<< 33d1d47640321f0c89fba081c9470707dc7149ea
   output[id] = rgb(pathtrace(ray, 4, ambient_light, &rand_state, objects, num_objects));
+=======
+  output[id] = rgb(pathtrace(ray, 6, ambient_light, &rand_state, objects, num_objects));
+>>>>>>> WIP
 }
