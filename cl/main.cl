@@ -339,9 +339,5 @@ __kernel void render(
   mwc64x_state_t rand_state = init_rand_state(random_seed);
   MWC64X_Skip(&rand_state, 20);
 
-<<<<<<< 33d1d47640321f0c89fba081c9470707dc7149ea
-  output[id] = rgb(pathtrace(ray, 4, ambient_light, &rand_state, objects, num_objects));
-=======
-  output[id] = rgb(pathtrace(ray, 6, ambient_light, &rand_state, objects, num_objects));
->>>>>>> WIP
+  output[id] = rgb(pathtrace(ray, 8, ambient_light, &rand_state, objects, num_objects));
 }
