@@ -8,12 +8,13 @@ use main::RGB;
 
 #[repr(C)]
 pub struct Object {
-  pub center      : [f32; 3],
-  pub radius      : f32,
-  pub color       : [f32; 3],
-  pub diffuseness : f32,
-  pub emittance   : f32,
-  pub reflectance : f32,
+  pub center        : [f32; 3],
+  pub radius        : f32,
+  pub color         : [f32; 3],
+  pub diffuseness   : f32,
+  pub emittance     : f32,
+  pub reflectance   : f32,
+  pub transmittance : f32,
 }
 
 pub struct T {

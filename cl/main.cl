@@ -128,6 +128,7 @@ typedef struct {
   float diffuseness;
   float emittance;
   float reflectance;
+  float transmittance;
 } Object;
 
 float parse_float(__global const float** data) {
@@ -146,12 +147,13 @@ float3_parse parse_float3(__global const float** data) {
 
 Object parse_object(__global const float* data) {
   Object r;
-  r.center       = parse_float3(&data);
-  r.radius       = parse_float(&data);
-  r.color        = parse_float3(&data);
-  r.diffuseness  = parse_float(&data);
-  r.emittance    = parse_float(&data);
-  r.reflectance  = parse_float(&data);
+  r.center        = parse_float3(&data);
+  r.radius        = parse_float(&data);
+  r.color         = parse_float3(&data);
+  r.diffuseness   = parse_float(&data);
+  r.emittance     = parse_float(&data);
+  r.reflectance   = parse_float(&data);
+  r.transmittance = parse_float(&data);
   return r;
 }
 
@@ -255,9 +257,24 @@ float3 pathtrace(
   reflected_ray.direction = perturb(rand_state, unperturbed, normal, max_scatter_angle);
   reflected_ray.origin = collision_point + 0.1f * reflected_ray.direction;
 
-  const float r = rand(rand_state);
   float3 reflected = (float3)(0, 0, 0);
-  if (r <= collided_object.reflectance) {
+  float r = rand(rand_state);
+
+  r -= collided_object.transmittance;
+  if (r <= 0) {
+    reflected +=
+      pathtrace(
+        reflected_ray,
+        max_depth - 1,
+        ambient,
+        rand_state,
+        objects,
+        num_objects
+      );
+  }
+
+  r -= collided_object.reflectance;
+  if (r <= 0) {
     reflected +=
       pathtrace(
         reflected_ray,

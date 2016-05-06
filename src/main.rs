@@ -51,9 +51,10 @@ pub fn main() {
     scene::T {
       objects       :
         vec!(
-          scene::Object { center: [-1.0,  0.0,  -4.0], radius: 1.0,  color: [1.0, 0.0, 0.0], emittance: 0.0, reflectance: 1.0, diffuseness: 1.0  },
-          scene::Object { center: [ 3.0, -1.0,  -6.0], radius: 2.0,  color: [0.9, 0.9, 0.9], emittance: 0.0, reflectance: 1.0, diffuseness: 0.01 },
-          scene::Object { center: [ 30.0, 10.0,  4.0], radius: 10.0, color: [1.0, 1.0, 1.0], emittance: 1.0, reflectance: 0.0, diffuseness: 1.0  },
+          scene::Object { center: [-1.0,  0.0,  -4.0], radius: 1.0,  color: [1.0, 0.0, 0.0], emittance: 0.0, reflectance: 1.0, transmittance: 0.0, diffuseness: 1.0  },
+          scene::Object { center: [ 3.0, -1.0,  -6.0], radius: 2.0,  color: [0.9, 0.9, 0.9], emittance: 0.0, reflectance: 1.0, transmittance: 0.0, diffuseness: 0.01 },
+          scene::Object { center: [ 30.0, 10.0,  4.0], radius: 10.0, color: [1.0, 1.0, 1.0], emittance: 1.0, reflectance: 0.0, transmittance: 0.4, diffuseness: 1.0  },
+          scene::Object { center: [-1.0,  0.2,  -2.0], radius: 0.4,  color: [0.9, 0.9, 1.0], emittance: 0.0, reflectance: 0.1, transmittance: 0.9, diffuseness: 0.01 },
         ),
       fovy          : std::f32::consts::FRAC_PI_2,
       eye           : [0.0, 0.0,  0.0],
