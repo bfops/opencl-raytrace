@@ -253,6 +253,7 @@ float3 pathtrace(
   float r = rand(rand_state);
 
   // TODO: loop + accumulators instead of recursion
+  // TODO: consider removing ambient light and adding a large light "around" the whole world.
 
   r -= collided_object.transmittance;
   if (r <= 0) {
@@ -277,7 +278,7 @@ float3 pathtrace(
       // TODO: cos_theta < 0?
       Ray reflected_ray;
       const float cos_theta = dot(ray.direction, normal);
-      const float3 unperturbed = 2*cos_theta*normal - ray.direction;
+      const float3 unperturbed = ray.direction - 2*cos_theta*normal;
       reflected_ray.direction = perturb(rand_state, unperturbed, normal, max_scatter_angle);
       reflected_ray.origin = collision_point + 0.1f * reflected_ray.direction;
 
