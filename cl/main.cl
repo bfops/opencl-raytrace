@@ -243,16 +243,19 @@ float3 pathtrace(
     reflected_ray.origin = collision_point + 0.1f * reflected_ray.direction;
   }
 
-  const float3 reflected =
-    collided_object.reflectance *
-    pathtrace(
-      reflected_ray,
-      max_depth - 1,
-      ambient,
-      rand_state,
-      objects,
-      num_objects
-    );
+  const float r = rand(rand_state);
+  float3 reflected = (float3)(0, 0, 0);
+  if (r <= collided_object.reflectance) {
+    reflected +=
+      pathtrace(
+        reflected_ray,
+        max_depth - 1,
+        ambient,
+        rand_state,
+        objects,
+        num_objects
+      );
+  }
 
   return pack_float3(collided_object.color) * (ambient + emitted + reflected);
 }
