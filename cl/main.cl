@@ -209,7 +209,7 @@ float3 perturb(mwc64x_state_t* rand_state, const float3 unperturbed, const float
   const float3 z = normalize(cross(normal, y));
   const float3 x = normalize(cross(z, y));
 
-  for (int i = 0; i < 4; ++i) {
+  for (int i = 0; i < 8; ++i) {
     const float3 r = perturb_frame(rand_state, max_angle, x, y, z);
     if (dot(r, normal) >= 0) {
       return r;
