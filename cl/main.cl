@@ -125,6 +125,7 @@ typedef struct {
   float3_parse center;
   float radius;
   float3_parse color;
+  float scattering;
   float emittance;
   float reflectance;
 } Object;
@@ -148,6 +149,7 @@ Object parse_object(__global const float* data) {
   r.center      = parse_float3(&data);
   r.radius      = parse_float(&data);
   r.color       = parse_float3(&data);
+  r.scattering  = parse_float(&data);
   r.emittance   = parse_float(&data);
   r.reflectance = parse_float(&data);
   return r;
