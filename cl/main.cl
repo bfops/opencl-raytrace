@@ -117,19 +117,19 @@ RGB rgb(float3 xyz) {
 
 typedef struct { float x, y, z } float3_parse;
 
-float3 pack_float3(float3_parse f) {
-  return (float3)(f.x, f.y, f.z);
-}
+#define MAKE_OBJECT(f3)  \
+  struct {               \
+    f3 center;           \
+    float radius;        \
+    f3 color;            \
+    float diffuseness;   \
+    float emittance;     \
+    float reflectance;   \
+    float transmittance; \
+  }
 
-typedef struct {
-  float3_parse center;
-  float radius;
-  float3_parse color;
-  float diffuseness;
-  float emittance;
-  float reflectance;
-  float transmittance;
-} Object;
+typedef MAKE_OBJECT(float3) Object;
+typedef MAKE_OBJECT(float3_parse) Object_parse;
 
 float parse_float(__global const float** data) {
   float r = **data;
@@ -137,8 +137,8 @@ float parse_float(__global const float** data) {
   return r;
 }
 
-float3_parse parse_float3(__global const float** data) {
-  float3_parse r;
+float3 parse_float3(__global const float** data) {
+  float3 r;
   r.x = parse_float(data);
   r.y = parse_float(data);
   r.z = parse_float(data);
@@ -174,8 +174,8 @@ void raycast(
   *toi = HUGE_VALF;
 
   for (uint i = 0; i < num_objects; ++i) {
-    Object object = parse_object((Object*)objects + i);
-    float this_toi = sphere_toi(ray.origin, ray.direction, pack_float3(object.center), object.radius);
+    Object object = parse_object((Object_parse*)objects + i);
+    float this_toi = sphere_toi(ray.origin, ray.direction, object.center, object.radius);
 
     if (this_toi >= *toi) {
       continue;
@@ -247,7 +247,7 @@ float3 pathtrace(
   light += (float3)(collided_object.emittance);
 
   const float3 collision_point = ray.origin + toi*ray.direction;
-  const float3 normal = (collision_point - pack_float3(collided_object.center)) / collided_object.radius;
+  const float3 normal = (collision_point - collided_object.center) / collided_object.radius;
   const float max_scatter_angle = 3.14 * collided_object.diffuseness;
 
   float r = rand(rand_state);
@@ -294,7 +294,7 @@ float3 pathtrace(
     }
   }
 
-  return pack_float3(collided_object.color) * light;
+  return collided_object.color * light;
 }
 
 mwc64x_state_t init_rand_state(ulong random_seed) {
