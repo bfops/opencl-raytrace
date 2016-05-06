@@ -242,7 +242,7 @@ float3 pathtrace(
     return ambient;
   }
 
-  float3 light = ambient;
+  float3 light = ambient * (collided_object.reflectance + collided_object.transmittance);
 
   light += (float3)(collided_object.emittance);
 
