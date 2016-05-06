@@ -1,6 +1,7 @@
 use glium;
 use glutin;
 use std;
+use time;
 
 use scene;
 
@@ -65,10 +66,15 @@ pub fn main() {
 
   let mut rendered_2d = vec!();
   {
-    let scale = 1 << 1;
+    let scale = 1 << 0;
     let w = scale * WINDOW_WIDTH;
     let h = scale * WINDOW_HEIGHT;
+
+    let before = time::precise_time_ns();
     let rendered = scene.render(w, h);
+    let after = time::precise_time_ns();
+    println!("Render took {:?}ms", (after - before) as f32 / 1_000_000.0);
+
     for y in 0 .. h as usize {
       let mut row = vec!();
       for x in 0 .. w as usize {
