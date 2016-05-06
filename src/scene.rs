@@ -23,7 +23,6 @@ pub struct T {
   pub eye           : [f32; 3],
   pub look          : [f32; 3],
   pub up            : [f32; 3],
-  pub ambient_light : [f32; 3],
 }
 
 impl T {
@@ -52,8 +51,6 @@ impl T {
 
     let random_seed: u64 = 0x123456789abcdef0;
     kernel.set_arg(arg, &random_seed)        ; arg = arg + 1;
-
-    kernel.set_arg(arg, &self.ambient_light) ; arg = arg + 1;
 
     let objects: &[Object] = &self.objects;
     let object_buffer: CLBuffer<Object> = ctx.create_buffer(objects.len(), opencl::cl::CL_MEM_READ_ONLY);

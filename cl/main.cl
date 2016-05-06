@@ -224,7 +224,6 @@ float3 perturb(mwc64x_state_t* rand_state, const float3 unperturbed, const float
 float3 pathtrace(
   Ray ray,
   const uint max_depth,
-  const float3 ambient,
   mwc64x_state_t* rand_state,
   __global const float* objects,
   const uint num_objects
@@ -239,14 +238,11 @@ float3 pathtrace(
     raycast(ray, objects, num_objects, &toi, &collided_object);
 
     if (toi == HUGE_VALF) {
-      pixel_color += attenuation * ambient;
       break;
     }
 
     attenuation *= collided_object.color;
 
-    // TODO: consider removing ambient light and adding a large light "around" the whole world.
-    pixel_color += attenuation * ambient * (collided_object.reflectance + collided_object.transmittance);
     pixel_color += attenuation * (float3)(collided_object.emittance);
 
     const float3 collision_point = ray.origin + toi*ray.direction;
@@ -302,7 +298,6 @@ __kernel void render(
   const float3 up,
 
   ulong random_seed,
-  float3 ambient_light,
 
   __global const float* objects,
   const uint num_objects,
@@ -328,5 +323,5 @@ __kernel void render(
   mwc64x_state_t rand_state = init_rand_state(random_seed);
   MWC64X_Skip(&rand_state, 20);
 
-  output[id] = rgb(pathtrace(ray, 8, ambient_light, &rand_state, objects, num_objects));
+  output[id] = rgb(pathtrace(ray, 8, &rand_state, objects, num_objects));
 }
