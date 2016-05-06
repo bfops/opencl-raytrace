@@ -190,7 +190,7 @@ float rand(mwc64x_state_t* rand_state) {
   return (float)MWC64X_NextUint(rand_state) / (float)UINT_MAX;
 }
 
-float3 perturb_frame(mwc64x_state_t* rand_state, const float max_angle, float3 x, float3 y, float3 z) {
+float3 perturb_frame(mwc64x_state_t* rand_state, const float max_angle, const float3* x, const float3* y, const float3* z) {
   float3 coeffs;
   const float c = cos(max_angle);
   coeffs.y = rand(rand_state) * (1 - c) + c;
@@ -200,25 +200,55 @@ float3 perturb_frame(mwc64x_state_t* rand_state, const float max_angle, float3 x
   coeffs.z = sin(azimuth);
   coeffs.x *= xz;
   coeffs.z *= xz;
-  return coeffs.x*x + coeffs.y*y + coeffs.z*z;
+  return coeffs.x * *x + coeffs.y * *y + coeffs.z * *z;
 }
 
-float3 perturb(mwc64x_state_t* rand_state, const float3 unperturbed, const float3 normal, const float max_angle) {
-  const float3 y = unperturbed;
+float3 perturb(mwc64x_state_t* rand_state, const float3* unperturbed, const float3* normal, const float max_angle) {
+  const float3* y = unperturbed;
   // TODO: find z/x better when normal ~= unperturbed
-  const float3 z = normalize(cross(normal, y));
-  const float3 x = normalize(cross(z, y));
+  const float3 z = normalize(cross(*normal, *y));
+  const float3 x = normalize(cross(z, *y));
 
   for (int i = 0; i < 8; ++i) {
-    const float3 r = perturb_frame(rand_state, max_angle, x, y, z);
-    if (dot(r, normal) >= 0) {
+    const float3 r = perturb_frame(rand_state, max_angle, &x, y, &z);
+    if (dot(r, *normal) >= 0) {
       return r;
     }
   }
 
   // If we failed several times, we're probably almost perpendicular to the normal.
   // I think that's a pretty small area, so we can just forget the perturb here.
-  return unperturbed;
+  return *unperturbed;
+}
+
+// If the ray is absorbed (i.e. there is no next path), this returns false.
+bool pick_next_path(
+  mwc64x_state_t* const rand_state,
+  const Ray* const ray,
+  const float3* const collision_point,
+  const float3* const normal,
+  const Object* const collided_object,
+  float3* const new_direction,
+  float3* const new_normal
+) {
+  float r = rand(rand_state);
+
+  r -= collided_object->transmittance;
+  if (r <= 0) {
+    *new_direction = ray->direction;
+    *new_normal = -*normal;
+    return true;
+  }
+
+  r -= collided_object->reflectance;
+  if (r <= 0) {
+    const float cos_theta = dot(ray->direction, *normal);
+    *new_direction = ray->direction - 2 * cos_theta * *normal;
+    *new_normal = *normal;
+    return true;
+  }
+
+  return false;
 }
 
 float3 pathtrace(
@@ -247,35 +277,19 @@ float3 pathtrace(
 
     const float3 collision_point = ray.origin + toi*ray.direction;
     const float3 normal = (collision_point - collided_object.center) / collided_object.radius;
-    const float max_scatter_angle = 3.14 * collided_object.diffuseness;
 
-    float r = rand(rand_state);
-
-    r -= collided_object.transmittance;
-    if (r <= 0) {
-      // TODO: cos_theta < 0?
-      Ray transmitted_ray;
-      const float3 unperturbed = ray.direction;
-      transmitted_ray.direction = perturb(rand_state, unperturbed, -normal, max_scatter_angle);
-      transmitted_ray.origin = collision_point + 0.1f * transmitted_ray.direction;
-      ray = transmitted_ray;
-      continue;
+    float3 new_direction;
+    float3 new_normal;
+    if (!pick_next_path(rand_state, &ray, &collision_point, &normal, &collided_object, &new_direction, &new_normal)) {
+      // Ray is absorbed.
+      break;
     }
 
-    r -= collided_object.reflectance;
-    if (r <= 0) {
-      // TODO: cos_theta < 0?
-      Ray reflected_ray;
-      const float cos_theta = dot(ray.direction, normal);
-      const float3 unperturbed = ray.direction - 2*cos_theta*normal;
-      reflected_ray.direction = perturb(rand_state, unperturbed, normal, max_scatter_angle);
-      reflected_ray.origin = collision_point + 0.1f * reflected_ray.direction;
-      ray = reflected_ray;
-      continue;
-    } 
+    const float max_scatter_angle = 3.14 * collided_object.diffuseness;
 
-    // Ray is absorbed.
-    break;
+    // TODO: maybe instead of a max_scatter_angle, we could describe a probability distribution over the scatter angle.
+    ray.direction = perturb(rand_state, &new_direction, &new_normal, max_scatter_angle);
+    ray.origin = collision_point + 0.1f * ray.direction;
   }
 
   return pixel_color;
@@ -304,12 +318,12 @@ __kernel void render(
 
   __global RGB * output)
 {
-  int id = get_global_id(0);
+  const int id = get_global_id(0);
 
   const int x_pix = id % image_width;
   const int y_pix = id / image_width;
 
-  float4 world_pos =
+  const float4 world_pos =
     vmult(view_to_world(eye, look, up),
     vmult(screen_to_view(image_width, image_height, fovy),
     (float4)(x_pix, y_pix, 1, 1)
@@ -323,5 +337,5 @@ __kernel void render(
   mwc64x_state_t rand_state = init_rand_state(random_seed);
   MWC64X_Skip(&rand_state, 20);
 
-  output[id] = rgb(pathtrace(ray, 8, &rand_state, objects, num_objects));
+  output[id] = rgb(pathtrace(ray, 20, &rand_state, objects, num_objects));
 }
