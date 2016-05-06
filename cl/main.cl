@@ -180,22 +180,20 @@ void raycast(
   }
 }
 
-float3 from_euler(float3 x, float3 y, float3 z, float azimuth, float altitude) {
-  const float ky = sin(altitude);
-  const float kxz = cos(altitude);
-  const float kz = sin(azimuth)*kxz;
-  const float kx = cos(azimuth)*kxz;
-  return kx*x + ky*y + kz*z;
-}
-
 float rand(mwc64x_state_t* rand_state) {
   return (float)MWC64X_NextUint(rand_state) / (float)UINT_MAX;
 }
 
 float3 perturb(mwc64x_state_t* rand_state, float3 x, float3 y, float3 z) {
-  const float azimuth = rand(rand_state) * 2 * 3.14;
-  const float altitude = 3.14 * (0.5 - rand(rand_state));
-  return from_euler(x, y, z, azimuth, altitude);
+  float3 coeffs;
+  coeffs.y = 2 * (rand(rand_state) - 0.5);
+  const float xz = sqrt(1 - coeffs.y * coeffs.y);
+  float azimuth = rand(rand_state ) * 2 * 3.14;
+  coeffs.x = cos(azimuth);
+  coeffs.z = sin(azimuth);
+  coeffs.x *= xz;
+  coeffs.z *= xz;
+  return coeffs.x*x + coeffs.y*y + coeffs.z*z;
 }
 
 float3 pathtrace(
@@ -229,9 +227,9 @@ float3 pathtrace(
   Ray reflected_ray;
   {
     float cos_theta = dot(ray.direction, normal);
-    const float3 reflected = ray.direction - 2*cos_theta*normal;
+    const float3 reflected = 2*cos_theta*normal - ray.direction;
 
-    const float3 y = (float3)(0, 1, 0);//reflected;
+    const float3 y = reflected;
     // TODO: find z/x better when normal ~= reflected
     const float3 z = normalize(cross(normal, y));
     const float3 x = normalize(cross(z, y));
