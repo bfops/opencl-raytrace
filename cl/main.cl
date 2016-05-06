@@ -125,7 +125,7 @@ typedef struct {
   float3_parse center;
   float radius;
   float3_parse color;
-  float scattering;
+  float diffuseness;
   float emittance;
   float reflectance;
 } Object;
@@ -146,12 +146,12 @@ float3_parse parse_float3(__global const float** data) {
 
 Object parse_object(__global const float* data) {
   Object r;
-  r.center      = parse_float3(&data);
-  r.radius      = parse_float(&data);
-  r.color       = parse_float3(&data);
-  r.scattering  = parse_float(&data);
-  r.emittance   = parse_float(&data);
-  r.reflectance = parse_float(&data);
+  r.center       = parse_float3(&data);
+  r.radius       = parse_float(&data);
+  r.color        = parse_float3(&data);
+  r.diffuseness  = parse_float(&data);
+  r.emittance    = parse_float(&data);
+  r.reflectance  = parse_float(&data);
   return r;
 }
 
@@ -188,11 +188,12 @@ float rand(mwc64x_state_t* rand_state) {
   return (float)MWC64X_NextUint(rand_state) / (float)UINT_MAX;
 }
 
-float3 perturb_frame(mwc64x_state_t* rand_state, float3 x, float3 y, float3 z) {
+float3 perturb_frame(mwc64x_state_t* rand_state, const float max_angle, float3 x, float3 y, float3 z) {
   float3 coeffs;
-  coeffs.y = 2 * (rand(rand_state) - 0.5);
+  const float c = cos(max_angle);
+  coeffs.y = rand(rand_state) * (1 - c) + c;
   const float xz = sqrt(1 - coeffs.y * coeffs.y);
-  float azimuth = rand(rand_state ) * 2 * 3.14;
+  const float azimuth = rand(rand_state) * 2 * 3.14;
   coeffs.x = cos(azimuth);
   coeffs.z = sin(azimuth);
   coeffs.x *= xz;
@@ -200,19 +201,22 @@ float3 perturb_frame(mwc64x_state_t* rand_state, float3 x, float3 y, float3 z) {
   return coeffs.x*x + coeffs.y*y + coeffs.z*z;
 }
 
-float3 perturb(mwc64x_state_t* rand_state, const float3 unperturbed, const float3 normal) {
+float3 perturb(mwc64x_state_t* rand_state, const float3 unperturbed, const float3 normal, const float max_angle) {
   const float3 y = unperturbed;
   // TODO: find z/x better when normal ~= unperturbed
   const float3 z = normalize(cross(normal, y));
   const float3 x = normalize(cross(z, y));
 
-  float3 r;
-  do {
-    r = perturb_frame(rand_state, x, y, z);
+  for (int i = 0; i < 4; ++i) {
+    const float3 r = perturb_frame(rand_state, max_angle, x, y, z);
+    if (dot(r, normal) >= 0) {
+      return r;
+    }
   }
-  while (dot(r, normal) < 0);
 
-  return r;
+  // If we failed several times, we're probably almost perpendicular to the normal.
+  // I think that's a pretty small area, so we can just forget the perturb here.
+  return unperturbed;
 }
 
 float3 pathtrace(
@@ -245,9 +249,10 @@ float3 pathtrace(
   // TODO: loop + accumulators
   Ray reflected_ray;
   float cos_theta = dot(ray.direction, normal);
-  const float3 unperturbed = 2*cos_theta*normal - ray.direction;
+  const float3 unperturbed = ray.direction - 2*cos_theta*normal;
+  const float max_scatter_angle = 3.14 * collided_object.diffuseness;
 
-  reflected_ray.direction = perturb(rand_state, unperturbed, normal);
+  reflected_ray.direction = perturb(rand_state, unperturbed, normal, max_scatter_angle);
   reflected_ray.origin = collision_point + 0.1f * reflected_ray.direction;
 
   const float r = rand(rand_state);
@@ -310,5 +315,5 @@ __kernel void render(
   mwc64x_state_t rand_state = init_rand_state(random_seed);
   MWC64X_Skip(&rand_state, 20);
 
-  output[id] = rgb(pathtrace(ray, 2, ambient_light, &rand_state, objects, num_objects));
+  output[id] = rgb(pathtrace(ray, 4, ambient_light, &rand_state, objects, num_objects));
 }

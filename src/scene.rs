@@ -11,7 +11,7 @@ pub struct Object {
   pub center      : [f32; 3],
   pub radius      : f32,
   pub color       : [f32; 3],
-  pub scattering  : f32,
+  pub diffuseness : f32,
   pub emittance   : f32,
   pub reflectance : f32,
 }
