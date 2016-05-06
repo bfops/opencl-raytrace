@@ -157,7 +157,10 @@ pub fn main() {
         [0.0, 0.0, 1.0, 0.0],
         [0.0, 0.0, 0.0, 1.0f32]
       ],
-      tex: &texture,
+      tex:
+        glium::uniforms::Sampler::new(&texture)
+        .magnify_filter(glium::uniforms::MagnifySamplerFilter::Linear)
+        .minify_filter(glium::uniforms::MinifySamplerFilter::LinearMipmapLinear)
     };
 
     let mut target = window.draw();
