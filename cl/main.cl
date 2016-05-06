@@ -186,7 +186,7 @@ float rand(mwc64x_state_t* rand_state) {
   return (float)MWC64X_NextUint(rand_state) / (float)UINT_MAX;
 }
 
-float3 perturb(mwc64x_state_t* rand_state, float3 x, float3 y, float3 z) {
+float3 perturb_frame(mwc64x_state_t* rand_state, float3 x, float3 y, float3 z) {
   float3 coeffs;
   coeffs.y = 2 * (rand(rand_state) - 0.5);
   const float xz = sqrt(1 - coeffs.y * coeffs.y);
@@ -196,6 +196,21 @@ float3 perturb(mwc64x_state_t* rand_state, float3 x, float3 y, float3 z) {
   coeffs.x *= xz;
   coeffs.z *= xz;
   return coeffs.x*x + coeffs.y*y + coeffs.z*z;
+}
+
+float3 perturb(mwc64x_state_t* rand_state, const float3 unperturbed, const float3 normal) {
+  const float3 y = unperturbed;
+  // TODO: find z/x better when normal ~= unperturbed
+  const float3 z = normalize(cross(normal, y));
+  const float3 x = normalize(cross(z, y));
+
+  float3 r;
+  do {
+    r = perturb_frame(rand_state, x, y, z);
+  }
+  while (dot(r, normal) < 0);
+
+  return r;
 }
 
 float3 pathtrace(
@@ -227,21 +242,11 @@ float3 pathtrace(
   // TODO: cos_theta < 0?
   // TODO: loop + accumulators
   Ray reflected_ray;
-  {
-    float cos_theta = dot(ray.direction, normal);
-    const float3 reflected = 2*cos_theta*normal - ray.direction;
+  float cos_theta = dot(ray.direction, normal);
+  const float3 unperturbed = 2*cos_theta*normal - ray.direction;
 
-    const float3 y = reflected;
-    // TODO: find z/x better when normal ~= reflected
-    const float3 z = normalize(cross(normal, y));
-    const float3 x = normalize(cross(z, y));
-    do {
-      reflected_ray.direction = perturb(rand_state, x, y, z);
-    }
-    while (dot(reflected_ray.direction, normal) < 0);
-
-    reflected_ray.origin = collision_point + 0.1f * reflected_ray.direction;
-  }
+  reflected_ray.direction = perturb(rand_state, unperturbed, normal);
+  reflected_ray.origin = collision_point + 0.1f * reflected_ray.direction;
 
   const float r = rand(rand_state);
   float3 reflected = (float3)(0, 0, 0);
