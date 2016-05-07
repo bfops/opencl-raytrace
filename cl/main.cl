@@ -1,4 +1,5 @@
 #include "cl/mwc64x/cl/mwc64x.cl"
+#include "cl/Noise/Noise/Noise.cl"
 
 float sphere_toi(
   const float3* eye,
