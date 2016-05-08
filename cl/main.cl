@@ -221,7 +221,6 @@ bool pick_next_path(
 float3 pathtrace(
   Ray ray,
   const uint max_depth,
-  const float min_attenuation,
   mwc64x_state_t* rand_state,
   __global const Object* objects,
   const uint num_objects
@@ -240,10 +239,6 @@ float3 pathtrace(
     }
 
     attenuation *= collided_object->color;
-
-    if (attenuation.x < min_attenuation && attenuation.y < min_attenuation && attenuation.z < min_attenuation) {
-      break;
-    }
 
     pixel_color += attenuation * (float3)(collided_object->emittance);
 
@@ -309,5 +304,5 @@ __kernel void render(
   mwc64x_state_t rand_state = init_rand_state(random_seed);
   MWC64X_Skip(&rand_state, 20);
 
-  output[id] = rgb(pathtrace(ray, 20, 0.01, &rand_state, objects, num_objects));
+  output[id] = rgb(pathtrace(ray, 20, &rand_state, objects, num_objects));
 }
