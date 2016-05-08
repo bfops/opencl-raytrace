@@ -60,14 +60,24 @@ pub fn main() {
     scene::T {
       objects       :
         vec!(
-          scene::Object { center: cl_float3(-1.0,    0.0,  -4.0), radius:   1.0, emittance:  0.0, reflectance: 1.0, transmittance: 0.0, diffuseness: 1.0 , texture: solid_color(1.0, 0.0, 0.0) },
-          scene::Object { center: cl_float3( 0.0,   -1.0,  -5.0), radius:   1.0, emittance:  0.0, reflectance: 0.1, transmittance: 0.9, diffuseness: 0.01, texture: solid_color(0.0, 0.6, 1.0) },
-          scene::Object { center: cl_float3(-1.0,   -1.0,  -2.0), radius:   0.5, emittance:  0.0, reflectance: 1.0, transmittance: 0.0, diffuseness: 0.2 , texture: solid_color(1.0, 0.4, 0.0) },
-          scene::Object { center: cl_float3( 6.0,    1.5, -10.0), radius:   4.0, emittance:  0.0, reflectance: 1.0, transmittance: 0.0, diffuseness: 0.01, texture: solid_color(1.0, 1.0, 1.0) },
-          scene::Object { center: cl_float3(30.0,   40.0,  10.0), radius:  10.0, emittance:  1.0, reflectance: 0.0, transmittance: 0.4, diffuseness: 1.0 , texture: solid_color(1.0, 1.0, 1.0) },
-          scene::Object { center: cl_float3(-1.0,    0.2,  -2.0), radius:   0.4, emittance:  0.0, reflectance: 0.1, transmittance: 0.8, diffuseness: 0.01, texture: solid_color(0.9, 0.9, 1.0) },
-          scene::Object { center: cl_float3( 0.0,    0.0,   0.0), radius: 100.0, emittance:  0.2, reflectance: 0.0, transmittance: 0.0, diffuseness: 0.0 , texture: scene::texture::Sky::to_texture() },
-          scene::Object { center: cl_float3( 0.0, -102.0,   0.0), radius: 100.0, emittance:  0.0, reflectance: 1.0, transmittance: 0.0, diffuseness: 1.0 , texture: scene::texture::Grass::to_texture() },
+          // red ball
+          scene::Object { center: cl_float3(-4.0,   -1.0,  -5.0), radius:   1.0, emittance:  0.0, reflectance: 1.0, transmittance: 0.0, diffuseness: 1.0 , texture: solid_color(1.0, 0.0, 0.0) },
+          // blue ball
+          scene::Object { center: cl_float3(-0.5,   -1.0,  -5.0), radius:   1.0, emittance:  0.0, reflectance: 0.1, transmittance: 0.9, diffuseness: 0.01, texture: solid_color(0.0, 0.6, 1.0) },
+          // frosted glass ball
+          scene::Object { center: cl_float3(-0.7,   -0.5,  -1.5), radius:   0.5, emittance:  0.0, reflectance: 0.1, transmittance: 0.8, diffuseness: 0.04, texture: solid_color(0.9, 0.9, 1.0) },
+          // glass ball
+          scene::Object { center: cl_float3( 0.2,   -0.5,  -1.0), radius:   0.5, emittance:  0.0, reflectance: 0.1, transmittance: 0.9, diffuseness: 0.0 , texture: solid_color(0.9, 0.9, 1.0) },
+          // brass ball
+          scene::Object { center: cl_float3( 3.0,    1.5, -10.0), radius:   4.0, emittance:  0.0, reflectance: 1.0, transmittance: 0.0, diffuseness: 0.1 , texture: solid_color(1.0, 0.4, 0.1) },
+          // small mirror ball
+          scene::Object { center: cl_float3( 3.0,   -1.0,  -3.5), radius:   1.0, emittance:  0.0, reflectance: 0.9, transmittance: 0.0, diffuseness: 0.0 , texture: solid_color(1.0, 1.0, 1.0) },
+          // light
+          scene::Object { center: cl_float3(-9.0,   10.0,   0.0), radius:   1.0, emittance:  1.0, reflectance: 0.0, transmittance: 1.0, diffuseness: 0.0 , texture: solid_color(0.9, 0.9, 1.0) },
+          // walls
+          scene::Object { center: cl_float3( 0.0,    0.0,   0.0), radius:  20.0, emittance:  0.2, reflectance: 0.0, transmittance: 0.0, diffuseness: 1.0 , texture: solid_color(1.0, 1.0, 1.0) },
+          // floor
+          scene::Object { center: cl_float3( 0.0, -102.0,   0.0), radius: 100.0, emittance:  0.0, reflectance: 1.0, transmittance: 0.0, diffuseness: 0.02, texture: scene::texture::Wood::to_texture() },
         ),
       fovy          : std::f32::consts::FRAC_PI_2,
       eye           : [0.0, 0.0,  0.0],
@@ -77,7 +87,7 @@ pub fn main() {
 
   let mut rendered_2d = vec!();
   {
-    let scale = 1 << 0;
+    let scale = 1 << 3;
     let w = scale * WINDOW_WIDTH;
     let h = scale * WINDOW_HEIGHT;
 

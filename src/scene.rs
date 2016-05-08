@@ -76,6 +76,15 @@ pub mod texture {
   }
 
   #[repr(C)]
+  pub struct Wood;
+
+  impl Wood {
+    pub fn to_texture() -> T {
+      of(3, [0; 0])
+    }
+  }
+
+  #[repr(C)]
   pub struct SolidColor(pub cl_float3);
 
   impl SolidColor {

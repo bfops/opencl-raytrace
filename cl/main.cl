@@ -119,9 +119,16 @@ typedef union {
   float3 solid_color;
 } TextureData;
 
+typedef unsigned char TextureTag;
+
+__constant TextureTag TEXTURE_SOLID = 0;
+__constant TextureTag TEXTURE_SKY = 1;
+__constant TextureTag TEXTURE_GRASS = 2;
+__constant TextureTag TEXTURE_WOOD = 3;
+
 typedef struct {
   TextureData data;
-  unsigned char tag;
+  TextureTag tag;
 } Texture;
 
 typedef struct {
@@ -229,22 +236,29 @@ bool pick_next_path(
 }
 
 float3 texture_color(const Ray* const ray, const __global Texture* texture, const float3* const collision_point) {
-  if (texture->tag == 0) {
+  if (texture->tag == TEXTURE_SOLID) {
     return texture->data.solid_color;
   }
 
-  if (texture->tag == 1) {
+  if (texture->tag == TEXTURE_SKY) {
     const float3 seed = ray->direction * 2;
     float r = Noise_3d(seed.x, seed.y, seed.z);
     r = (r + 1) / 2;
     return mix((float3)(1, 1, 1), (float3)(0, 1, 1), r);
   }
 
-  if (texture->tag == 2) {
+  if (texture->tag == TEXTURE_GRASS) {
     const float3 seed = *collision_point * 4;
     float r = Noise_3d(seed.x, seed.y, seed.z);
     r = (r + 1) / 2;
     return mix((float3)(0, 0.4, 0), (float3)(0.4, 0.1, 0), r);
+  }
+
+  if (texture->tag == TEXTURE_WOOD) {
+    const float3 seed = *collision_point * 2;
+    float r = Noise_3d(seed.x, seed.y, seed.z);
+    r = (r + 1) / 2;
+    return mix((float3)(1.0, 0.8, 0.6), (float3)(0.4, 0.1, 0), r);
   }
 
   printf("Unexpected texture tag!\n");
