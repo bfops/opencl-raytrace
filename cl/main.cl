@@ -115,14 +115,23 @@ RGB rgb(float3 xyz) {
   return r;
 }
 
+typedef union {
+  float3 solid_color;
+} TextureData;
+
+typedef struct {
+  TextureData data;
+  unsigned char tag;
+} Texture;
+
 typedef struct {
   float3 center;
   float radius;
-  float3 color;
   float diffuseness;
   float emittance;
   float reflectance;
   float transmittance;
+  Texture texture;
 } Object;
 
 typedef struct {
@@ -219,6 +228,14 @@ bool pick_next_path(
   return false;
 }
 
+float3 texture_color(const __global Texture* texture) {
+  if (texture->tag == 0) {
+    return texture->data.solid_color;
+  }
+
+  printf("Unexpected texture tag!\n");
+}
+
 float3 pathtrace(
   Ray ray,
   const uint max_depth,
@@ -239,7 +256,7 @@ float3 pathtrace(
       break;
     }
 
-    attenuation *= collided_object->color;
+    attenuation *= texture_color(&collided_object->texture);
 
     pixel_color += attenuation * (float3)(collided_object->emittance);
 

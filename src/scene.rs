@@ -26,15 +26,56 @@ impl cl_float3 {
   }
 }
 
+pub mod texture {
+  use std;
+
+  use opencl::cl::{cl_uchar, cl_float};
+  use super::{cl_float3};
+
+  #[repr(C)]
+  pub struct T {
+    data: [cl_float; 4],
+    tag: cl_uchar,
+    align: [cl_float3; 0],
+  }
+
+  fn of<X>(tag: cl_uchar, mut x: X) -> T {
+    assert!(std::mem::size_of::<T>() >= std::mem::size_of::<X>());
+
+    let mut t =
+      T {
+        data: [0.0; 4],
+        tag: tag,
+        align: [],
+      };
+
+    let p = unsafe {
+      std::mem::transmute(&mut t.data[0])
+    };
+    std::mem::swap(p, &mut x);
+
+    t
+  }
+
+  #[repr(C)]
+  pub struct SolidColor(pub cl_float3);
+
+  impl SolidColor {
+    pub fn to_texture(self) -> T {
+      of(0, self)
+    }
+  }
+}
+
 #[repr(C)]
 pub struct Object {
   pub center        : cl_float3,
   pub radius        : cl_float,
-  pub color         : cl_float3,
   pub diffuseness   : cl_float,
   pub emittance     : cl_float,
   pub reflectance   : cl_float,
   pub transmittance : cl_float,
+  pub texture       : texture::T,
 }
 
 pub struct T {
