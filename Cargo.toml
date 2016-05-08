@@ -10,6 +10,7 @@ name = "raytrace"
 path = "./src/bin.rs"
 
 [dependencies]
+cgmath = "*"
 glium = "*"
 glutin = "*"
 log = "*"

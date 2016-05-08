@@ -1,3 +1,4 @@
+use cgmath;
 use glium;
 use glutin;
 use std;
@@ -102,7 +103,7 @@ pub fn main() {
     },
   ).unwrap();
 
-  let scene =
+  let mut scene =
     scene::T {
       objects       :
         vec!(
@@ -126,9 +127,9 @@ pub fn main() {
           scene::Object { center: cl_float3( 0.0, -102.0,   0.0), radius: 100.0, emittance:  0.0, reflectance: 1.0, transmittance: 0.0, diffuseness: 0.02, texture: scene::texture::Wood::to_texture() },
         ),
       fovy          : std::f32::consts::FRAC_PI_2,
-      eye           : [0.0, 0.0,  0.0],
-      look          : [0.0, 0.0, -1.0],
-      up            : [0.0, 1.0,  0.0],
+      eye           : cgmath::Vector3::new(0.0, 0.0,  0.0),
+      look          : cgmath::Vector3::new(0.0, 0.0, -1.0),
+      up            : cgmath::Vector3::new(0.0, 1.0,  0.0),
     };
 
   let scale = 1 << 0;
@@ -180,8 +181,16 @@ pub fn main() {
     target.finish().unwrap();
 
     for event in window.poll_events() {
-      if let glutin::Event::Closed = event {
-        return
+      match event {
+        glutin::Event::Closed => return,
+        glutin::Event::KeyboardInput(_, _, Some(key)) => {
+          match key {
+            glutin::VirtualKeyCode::W => scene.eye = scene.eye + scene.look,
+            glutin::VirtualKeyCode::S => scene.eye = scene.eye - scene.look,
+            _ => {},
+          }
+        },
+        _ => {},
       }
     }
   }
