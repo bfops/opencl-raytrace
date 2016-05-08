@@ -114,7 +114,7 @@ pub struct T {
 }
 
 impl T {
-  pub fn render(&self, width: u32, height: u32) -> Vec<RGB> {
+  pub fn render(&self, width: u32, height: u32, random_seed: u64) -> Vec<RGB> {
     let (device, ctx, queue) = opencl::util::create_compute_context().unwrap();
 
     let num_pixels = width as usize * height as usize;
@@ -139,7 +139,6 @@ impl T {
     kernel.set_arg(arg, &self.look)          ; arg = arg + 1;
     kernel.set_arg(arg, &self.up)            ; arg = arg + 1;
 
-    let random_seed: u64 = 0x123456789abcdef0;
     kernel.set_arg(arg, &random_seed)        ; arg = arg + 1;
 
     let objects: &[Object] = &self.objects;

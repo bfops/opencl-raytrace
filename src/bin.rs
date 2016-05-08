@@ -6,6 +6,7 @@ extern crate glutin;
 #[macro_use]
 extern crate log;
 extern crate opencl;
+extern crate rand;
 extern crate time;
 
 mod main;

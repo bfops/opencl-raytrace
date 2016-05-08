@@ -13,6 +13,7 @@ path = "./src/bin.rs"
 glium = "*"
 glutin = "*"
 log = "*"
+rand = "*"
 time = "*"
 
 [dependencies.opencl]
