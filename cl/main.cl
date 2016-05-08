@@ -1,17 +1,16 @@
 #include "cl/mwc64x/cl/mwc64x.cl"
 
-// Doesn't return 0 so that rays can bounce without bumping.
 float sphere_toi(
-  const float3 eye,
-  const float3 look,
+  const float3* eye,
+  const float3* look,
 
-  const float3 center,
+  const __global float3* center,
   const float radius)
 {
   // quadratic coefficients
-  float a = dot(look, look);
-  float b = 2 * dot(eye - center, look);
-  float3 to_center = eye - center;
+  float a = dot(*look, *look);
+  float3 to_center = *eye - *center;
+  float b = 2 * dot(to_center, *look);
   float c = dot(to_center, to_center) - radius*radius;
 
   // discriminant
@@ -115,47 +114,15 @@ RGB rgb(float3 xyz) {
   return r;
 }
 
-typedef struct { float x, y, z } float3_parse;
-
-#define MAKE_OBJECT(f3)  \
-  struct {               \
-    f3 center;           \
-    float radius;        \
-    f3 color;            \
-    float diffuseness;   \
-    float emittance;     \
-    float reflectance;   \
-    float transmittance; \
-  }
-
-typedef MAKE_OBJECT(float3) Object;
-typedef MAKE_OBJECT(float3_parse) Object_parse;
-
-float parse_float(__global const float** data) {
-  float r = **data;
-  ++*data;
-  return r;
-}
-
-float3 parse_float3(__global const float** data) {
-  float3 r;
-  r.x = parse_float(data);
-  r.y = parse_float(data);
-  r.z = parse_float(data);
-  return r;
-}
-
-Object parse_object(__global const float* data) {
-  Object r;
-  r.center        = parse_float3(&data);
-  r.radius        = parse_float(&data);
-  r.color         = parse_float3(&data);
-  r.diffuseness   = parse_float(&data);
-  r.emittance     = parse_float(&data);
-  r.reflectance   = parse_float(&data);
-  r.transmittance = parse_float(&data);
-  return r;
-}
+typedef struct {
+  float3 center;
+  float radius;
+  float3 color;
+  float diffuseness;
+  float emittance;
+  float reflectance;
+  float transmittance;
+} Object;
 
 typedef struct {
   float3 origin;
@@ -163,19 +130,19 @@ typedef struct {
 } Ray;
 
 void raycast(
-  Ray ray,
+  const Ray* ray,
 
-  __global const float* objects,
+  __global const Object* objects,
   const uint num_objects,
 
-  float* toi,
-  Object* collision
+  float* const toi,
+  __global const Object** const collision
 ) {
   *toi = HUGE_VALF;
 
   for (uint i = 0; i < num_objects; ++i) {
-    Object object = parse_object((Object_parse*)objects + i);
-    float this_toi = sphere_toi(ray.origin, ray.direction, object.center, object.radius);
+    __global const Object* const object = &objects[i];
+    float this_toi = sphere_toi(&ray->origin, &ray->direction, &object->center, object->radius);
 
     if (this_toi >= *toi) {
       continue;
@@ -227,7 +194,7 @@ bool pick_next_path(
   const Ray* const ray,
   const float3* const collision_point,
   const float3* const normal,
-  const Object* const collided_object,
+  const __global Object* const collided_object,
   float3* const new_direction,
   float3* const new_normal
 ) {
@@ -256,41 +223,41 @@ float3 pathtrace(
   const uint max_depth,
   const float min_attenuation,
   mwc64x_state_t* rand_state,
-  __global const float* objects,
+  __global const Object* objects,
   const uint num_objects
 ) {
   float3 pixel_color = (float3)(0, 0, 0);
   float3 attenuation = (float3)(1, 1, 1);
 
-  for (int i = 0; i < max_depth; ++i) {
+  for (unsigned int i = 0; i < max_depth; ++i) {
     float toi;
-    Object collided_object;
+    const __global Object* collided_object;
 
-    raycast(ray, objects, num_objects, &toi, &collided_object);
+    raycast(&ray, objects, num_objects, &toi, &collided_object);
 
     if (toi == HUGE_VALF) {
       break;
     }
 
-    attenuation *= collided_object.color;
+    attenuation *= collided_object->color;
 
     if (attenuation.x < min_attenuation && attenuation.y < min_attenuation && attenuation.z < min_attenuation) {
       break;
     }
 
-    pixel_color += attenuation * (float3)(collided_object.emittance);
+    pixel_color += attenuation * (float3)(collided_object->emittance);
 
     const float3 collision_point = ray.origin + toi*ray.direction;
-    const float3 normal = (collision_point - collided_object.center) / collided_object.radius;
+    const float3 normal = (collision_point - collided_object->center) / collided_object->radius;
 
     float3 new_direction;
     float3 new_normal;
-    if (!pick_next_path(rand_state, &ray, &collision_point, &normal, &collided_object, &new_direction, &new_normal)) {
+    if (!pick_next_path(rand_state, &ray, &collision_point, &normal, collided_object, &new_direction, &new_normal)) {
       // Ray is absorbed.
       break;
     }
 
-    const float max_scatter_angle = 3.14 * collided_object.diffuseness;
+    const float max_scatter_angle = 3.14 * collided_object->diffuseness;
 
     // TODO: maybe instead of a max_scatter_angle, we could describe a probability distribution over the scatter angle.
     ray.direction = perturb(rand_state, &new_direction, &new_normal, max_scatter_angle);
@@ -318,7 +285,7 @@ __kernel void render(
 
   ulong random_seed,
 
-  __global const float* objects,
+  __global const Object* objects,
   const uint num_objects,
 
   __global RGB * output)

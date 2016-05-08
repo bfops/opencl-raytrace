@@ -1,4 +1,5 @@
 use opencl;
+use opencl::cl::cl_float;
 use opencl::mem::CLBuffer;
 use std;
 use std::borrow::Borrow;
@@ -6,15 +7,34 @@ use std::io::Read;
 
 use main::RGB;
 
+#[repr(simd)]
+struct SixteenBytes(u64, u64);
+
+#[allow(non_camel_case_types)]
+#[repr(C)]
+pub struct cl_float3 {
+  data: [cl_float; 4],
+  align: [SixteenBytes; 0],
+}
+
+impl cl_float3 {
+  pub fn new(xyz: [cl_float; 3]) -> Self {
+    cl_float3 {
+      data: [xyz[0], xyz[1], xyz[2], 0.0],
+      align: [],
+    }
+  }
+}
+
 #[repr(C)]
 pub struct Object {
-  pub center        : [f32; 3],
-  pub radius        : f32,
-  pub color         : [f32; 3],
-  pub diffuseness   : f32,
-  pub emittance     : f32,
-  pub reflectance   : f32,
-  pub transmittance : f32,
+  pub center        : cl_float3,
+  pub radius        : cl_float,
+  pub color         : cl_float3,
+  pub diffuseness   : cl_float,
+  pub emittance     : cl_float,
+  pub reflectance   : cl_float,
+  pub transmittance : cl_float,
 }
 
 pub struct T {
@@ -37,7 +57,9 @@ impl T {
       file.read_to_string(&mut ker).unwrap();
       ctx.create_program_from_source(ker.borrow())
     };
-    program.build(&device).unwrap();
+    if let Err(e) = program.build(&device) {
+      panic!("Error building program: {}", e);
+    }
 
     let kernel = program.create_kernel("render");
 

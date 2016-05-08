@@ -1,3 +1,5 @@
+#![feature(repr_simd)]
+
 #[macro_use]
 extern crate glium;
 extern crate glutin;
