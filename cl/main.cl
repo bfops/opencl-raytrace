@@ -228,9 +228,23 @@ bool pick_next_path(
   return false;
 }
 
-float3 texture_color(const __global Texture* texture) {
+float3 texture_color(const Ray* const ray, const __global Texture* texture, const float3* const collision_point) {
   if (texture->tag == 0) {
     return texture->data.solid_color;
+  }
+
+  if (texture->tag == 1) {
+    const float3 seed = ray->direction * 2;
+    float r = Noise_3d(seed.x, seed.y, seed.z);
+    r = (r + 1) / 2;
+    return mix((float3)(1, 1, 1), (float3)(0, 1, 1), r);
+  }
+
+  if (texture->tag == 2) {
+    const float3 seed = *collision_point * 4;
+    float r = Noise_3d(seed.x, seed.y, seed.z);
+    r = (r + 1) / 2;
+    return mix((float3)(0, 0.4, 0), (float3)(0.4, 0.1, 0), r);
   }
 
   printf("Unexpected texture tag!\n");
@@ -256,12 +270,11 @@ float3 pathtrace(
       break;
     }
 
-    attenuation *= texture_color(&collided_object->texture);
-
-    pixel_color += attenuation * (float3)(collided_object->emittance);
-
     const float3 collision_point = ray.origin + toi*ray.direction;
     const float3 normal = (collision_point - collided_object->center) / collided_object->radius;
+
+    attenuation *= texture_color(&ray, &collided_object->texture, &collision_point);
+    pixel_color += attenuation * (float3)(collided_object->emittance);
 
     float3 new_direction;
     float3 new_normal;
@@ -322,5 +335,5 @@ __kernel void render(
   mwc64x_state_t rand_state = init_rand_state(random_seed);
   MWC64X_Skip(&rand_state, 20);
 
-  output[id] = rgb(pathtrace(ray, 20, &rand_state, objects, num_objects));
+  output[id] = rgb(pathtrace(ray, 8, &rand_state, objects, num_objects));
 }

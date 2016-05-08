@@ -60,11 +60,14 @@ pub fn main() {
     scene::T {
       objects       :
         vec!(
-          scene::Object { center: cl_float3(-1.0,  0.0, -4.0), radius:   1.0, emittance: 0.0, reflectance: 1.0, transmittance: 0.0, diffuseness: 1.0  , texture: solid_color(1.0 , 0.0 , 0.0 ) },
-          scene::Object { center: cl_float3( 3.0, -1.0, -6.0), radius:   2.0, emittance: 0.0, reflectance: 1.0, transmittance: 0.0, diffuseness: 0.01 , texture: solid_color(0.8 , 0.8 , 0.8 ) },
-          scene::Object { center: cl_float3(30.0, 10.0,  4.0), radius:  10.0, emittance: 1.0, reflectance: 0.0, transmittance: 0.4, diffuseness: 1.0  , texture: solid_color(1.0 , 1.0 , 1.0 ) },
-          scene::Object { center: cl_float3(-1.0,  0.2, -2.0), radius:   0.4, emittance: 0.0, reflectance: 0.1, transmittance: 0.8, diffuseness: 0.01 , texture: solid_color(0.9 , 0.9 , 1.0 ) },
-          scene::Object { center: cl_float3( 0.0,  0.0,  0.0), radius: 100.0, emittance: 1.0, reflectance: 0.0, transmittance: 0.0, diffuseness: 0.0  , texture: solid_color(0.02, 0.02, 0.02) },
+          scene::Object { center: cl_float3(-1.0,    0.0,  -4.0), radius:   1.0, emittance:  0.0, reflectance: 1.0, transmittance: 0.0, diffuseness: 1.0 , texture: solid_color(1.0, 0.0, 0.0) },
+          scene::Object { center: cl_float3( 0.0,   -1.0,  -5.0), radius:   1.0, emittance:  0.0, reflectance: 0.1, transmittance: 0.9, diffuseness: 0.01, texture: solid_color(0.0, 0.6, 1.0) },
+          scene::Object { center: cl_float3(-1.0,   -1.0,  -2.0), radius:   0.5, emittance:  0.0, reflectance: 1.0, transmittance: 0.0, diffuseness: 0.2 , texture: solid_color(1.0, 0.4, 0.0) },
+          scene::Object { center: cl_float3( 6.0,    1.5, -10.0), radius:   4.0, emittance:  0.0, reflectance: 1.0, transmittance: 0.0, diffuseness: 0.01, texture: solid_color(1.0, 1.0, 1.0) },
+          scene::Object { center: cl_float3(30.0,   40.0,  10.0), radius:  10.0, emittance:  1.0, reflectance: 0.0, transmittance: 0.4, diffuseness: 1.0 , texture: solid_color(1.0, 1.0, 1.0) },
+          scene::Object { center: cl_float3(-1.0,    0.2,  -2.0), radius:   0.4, emittance:  0.0, reflectance: 0.1, transmittance: 0.8, diffuseness: 0.01, texture: solid_color(0.9, 0.9, 1.0) },
+          scene::Object { center: cl_float3( 0.0,    0.0,   0.0), radius: 100.0, emittance:  0.2, reflectance: 0.0, transmittance: 0.0, diffuseness: 0.0 , texture: scene::texture::Sky::to_texture() },
+          scene::Object { center: cl_float3( 0.0, -102.0,   0.0), radius: 100.0, emittance:  0.0, reflectance: 1.0, transmittance: 0.0, diffuseness: 1.0 , texture: scene::texture::Grass::to_texture() },
         ),
       fovy          : std::f32::consts::FRAC_PI_2,
       eye           : [0.0, 0.0,  0.0],

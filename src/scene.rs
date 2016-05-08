@@ -58,6 +58,24 @@ pub mod texture {
   }
 
   #[repr(C)]
+  pub struct Sky;
+
+  impl Sky {
+    pub fn to_texture() -> T {
+      of(1, [0; 0])
+    }
+  }
+
+  #[repr(C)]
+  pub struct Grass;
+
+  impl Grass {
+    pub fn to_texture() -> T {
+      of(2, [0; 0])
+    }
+  }
+
+  #[repr(C)]
   pub struct SolidColor(pub cl_float3);
 
   impl SolidColor {
