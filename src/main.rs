@@ -200,13 +200,35 @@ fn draw_from_texture(
       .minify_filter(glium::uniforms::MinifySamplerFilter::LinearMipmapLinear)
   };
 
+  let draw_parameters =
+    glium::DrawParameters {
+      depth:
+        glium::Depth {
+          test: glium::DepthTest::Overwrite,
+          write: false,
+          .. Default::default()
+        },
+      blend:
+        glium::Blend {
+          color:
+            glium::BlendingFunction::Addition {
+              source: glium::LinearBlendingFactor::ConstantColor,
+              destination: glium::LinearBlendingFactor::OneMinusConstantColor,
+            },
+          alpha: glium::BlendingFunction::AlwaysReplace,
+          constant_value: (0.0, 0.0, 0.0, 0.0),
+        },
+      .. Default::default()
+    };
+
+
   let mut target = window.draw();
   target.draw(
     &vertex_buffer,
     &index_buffer,
     &program,
     &uniforms,
-    &Default::default(),
+    &draw_parameters,
   ).unwrap();
   target.finish().unwrap();
 
