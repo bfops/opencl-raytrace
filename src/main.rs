@@ -43,66 +43,6 @@ pub fn main() {
     .build_glium()
     .unwrap();
 
-  // building the vertex buffer, which contains all the vertices that we will draw
-  let vertex_buffer = {
-    #[derive(Copy, Clone)]
-    struct Vertex {
-      position: [f32; 2],
-      tex_coords: [f32; 2],
-    }
-
-    implement_vertex!(Vertex, position, tex_coords);
-
-    glium::VertexBuffer::new(&window,
-      &[
-        Vertex { position: [-1.0, -1.0], tex_coords: [0.0, 0.0] },
-        Vertex { position: [-1.0,  1.0], tex_coords: [0.0, 1.0] },
-        Vertex { position: [ 1.0,  1.0], tex_coords: [1.0, 1.0] },
-        Vertex { position: [ 1.0, -1.0], tex_coords: [1.0, 0.0] }
-      ]
-    ).unwrap()
-  };
-
-  // building the index buffer
-  let index_buffer =
-    glium::IndexBuffer::new(
-      &window,
-      glium::index::PrimitiveType::TriangleStrip,
-      &[1 as u16, 2, 0, 3],
-    ).unwrap();
-
-  // compiling shaders and linking them together
-  let program = program!(&window,
-    330 => {
-      vertex: "
-        #version 330
-
-        uniform mat4 matrix;
-
-        in vec2 position;
-        in vec2 tex_coords;
-
-        out vec2 v_tex_coords;
-
-        void main() {
-          gl_Position = matrix * vec4(position, 0.0, 1.0);
-          v_tex_coords = tex_coords;
-        }
-      ",
-
-      fragment: "
-        #version 330
-        uniform sampler2D tex;
-        in vec2 v_tex_coords;
-        out vec4 f_color;
-
-        void main() {
-          f_color = texture(tex, v_tex_coords);
-        }
-      "
-    },
-  ).unwrap();
-
   let mut scene =
     scene::T {
       objects       :
@@ -159,31 +99,13 @@ pub fn main() {
       )
       .unwrap();
 
-    use glium::Surface;
-
-    // building the uniforms
-    let uniforms = uniform! {
-      matrix: [
-        [1.0, 0.0, 0.0, 0.0],
-        [0.0, 1.0, 0.0, 0.0],
-        [0.0, 0.0, 1.0, 0.0],
-        [0.0, 0.0, 0.0, 1.0f32]
-      ],
-      tex:
-        glium::uniforms::Sampler::new(&texture)
-        .magnify_filter(glium::uniforms::MagnifySamplerFilter::Linear)
-        .minify_filter(glium::uniforms::MinifySamplerFilter::LinearMipmapLinear)
-    };
-
-    let mut target = window.draw();
-    target.clear_color(0.0, 0.0, 0.0, 0.0);
-    target.draw(&vertex_buffer, &index_buffer, &program, &uniforms, &Default::default()).unwrap();
-    target.finish().unwrap();
+    draw_from_texture(&window, &texture);
 
     for event in window.poll_events() {
       match event {
         glutin::Event::Closed => return,
         glutin::Event::KeyboardInput(_, _, Some(key)) => {
+          println!("hello world");
           match key {
             glutin::VirtualKeyCode::W => scene.eye = scene.eye + scene.look,
             glutin::VirtualKeyCode::S => scene.eye = scene.eye - scene.look,
@@ -194,4 +116,99 @@ pub fn main() {
       }
     }
   }
+}
+
+fn draw_from_texture(
+  window: &glium::backend::glutin_backend::GlutinFacade,
+  texture: &glium::texture::Texture2d,
+) -> Result<(), ()>
+{
+  use glium::Surface;
+
+  // building the vertex buffer, which contains all the vertices that we will draw
+  let vertex_buffer = {
+    #[derive(Copy, Clone)]
+    struct Vertex {
+      position: [f32; 2],
+      tex_coords: [f32; 2],
+    }
+
+    implement_vertex!(Vertex, position, tex_coords);
+
+    glium::VertexBuffer::new(
+      window,
+      &[
+        Vertex { position: [-1.0, -1.0], tex_coords: [0.0, 0.0] },
+        Vertex { position: [-1.0,  1.0], tex_coords: [0.0, 1.0] },
+        Vertex { position: [ 1.0,  1.0], tex_coords: [1.0, 1.0] },
+        Vertex { position: [ 1.0, -1.0], tex_coords: [1.0, 0.0] }
+      ]
+    ).unwrap()
+  };
+
+  // building the index buffer
+  let index_buffer =
+    glium::IndexBuffer::new(
+      window,
+      glium::index::PrimitiveType::TriangleStrip,
+      &[1 as u16, 2, 0, 3],
+    ).unwrap();
+
+  // compiling shaders and linking them together
+  let program = program!(window,
+    330 => {
+      vertex: "
+        #version 330
+
+        uniform mat4 matrix;
+
+        in vec2 position;
+        in vec2 tex_coords;
+
+        out vec2 v_tex_coords;
+
+        void main() {
+          gl_Position = matrix * vec4(position, 0.0, 1.0);
+          v_tex_coords = tex_coords;
+        }
+      ",
+
+      fragment: "
+        #version 330
+        uniform sampler2D tex;
+        in vec2 v_tex_coords;
+        out vec4 f_color;
+
+        void main() {
+          f_color = texture(tex, v_tex_coords);
+        }
+      "
+    },
+  ).unwrap();
+
+  // building the uniforms
+  let uniforms = uniform! {
+    matrix: [
+      [1.0, 0.0, 0.0, 0.0],
+      [0.0, 1.0, 0.0, 0.0],
+      [0.0, 0.0, 1.0, 0.0],
+      [0.0, 0.0, 0.0, 1.0f32]
+    ],
+    tex:
+      glium::uniforms::Sampler::new(texture)
+      .magnify_filter(glium::uniforms::MagnifySamplerFilter::Linear)
+      .minify_filter(glium::uniforms::MinifySamplerFilter::LinearMipmapLinear)
+  };
+
+  let mut target = window.draw();
+  target.draw(
+    &vertex_buffer,
+    &index_buffer,
+    &program,
+    &uniforms,
+    &Default::default(),
+  ).unwrap();
+  target.finish().unwrap();
+
+  Ok(())
 }
