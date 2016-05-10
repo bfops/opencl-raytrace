@@ -72,28 +72,35 @@ pub fn main() {
       up            : cgmath::Vector3::new(0.0, 1.0,  0.0),
     };
 
-  let scale = 1 << 0;
-  let w = scale * WINDOW_WIDTH;
-  let h = scale * WINDOW_HEIGHT;
+  let w = WINDOW_WIDTH / 8;
+  let h = WINDOW_HEIGHT / 8;
+  let max_scale = 1 << 6;
 
   let mut make_random_seed: rand::XorShiftRng =
     rand::SeedableRng::from_seed([0x12345678, 0x9abcdef0, 0x89765432, 0x12324121]);
 
-  let framebuffer_texture =
+  let framebuffer_texture = {
+    let w = w * max_scale;
+    let h = h * max_scale;
     glium::texture::Texture2d::new(
       &window,
       glium::texture::RawImage2d {
-        width: w,
-        height: h,
-        format: glium::texture::ClientFormat::F32F32F32,
-        data: std::borrow::Cow::Owned(std::iter::repeat((0.0, 0.0, 0.0)).take((w*h) as usize).collect()),
+        width  : w,
+        height : h,
+        format : glium::texture::ClientFormat::F32F32F32,
+        data   : std::borrow::Cow::Owned(std::iter::repeat((0.0, 0.0, 0.0)).take((w*h) as usize).collect()),
       },
-    ).unwrap();
+    ).unwrap()
+  };
 
   let mut framebuffer = glium::framebuffer::SimpleFrameBuffer::new(&window, &framebuffer_texture).unwrap();
 
   let mut stationary_frames_drawn = 0;
   loop {
+    let scale = std::cmp::min(max_scale, stationary_frames_drawn / 4 + 1);
+    let w = w * scale;
+    let h = h * scale;
+
     let before = time::precise_time_ns();
     let rendered = scene.render(w, h, rand::Rng::next_u64(&mut make_random_seed));
     let after = time::precise_time_ns();
