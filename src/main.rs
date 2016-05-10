@@ -171,17 +171,31 @@ pub fn main() {
     stationary_frames_drawn += 1;
 
     for event in window.poll_events() {
+      // because closures get belligerent about borrowing. Yes, really.
+      // I don't make the rules, I just do what makes me hate myself the least.
+      macro_rules! move_camera {
+        ( $v:expr ) => {
+          let v = $v;
+          scene.move_camera(&v);
+          stationary_frames_drawn = 0;
+        };
+      }
+
       match event {
         glutin::Event::Closed => return,
-        glutin::Event::KeyboardInput(_, _, Some(key)) => {
+        glutin::Event::KeyboardInput(glium::glutin::ElementState::Pressed, _, Some(key)) => {
           match key {
             glutin::VirtualKeyCode::W => {
-              stationary_frames_drawn = 0;
-              scene.eye = scene.eye + scene.look;
+              move_camera!(scene.z());
             },
             glutin::VirtualKeyCode::S => {
-              stationary_frames_drawn = 0;
-              scene.eye = scene.eye - scene.look;
+              move_camera!(-scene.z());
+            },
+            glutin::VirtualKeyCode::D => {
+              move_camera!(scene.x());
+            },
+            glutin::VirtualKeyCode::A => {
+              move_camera!(-scene.x());
             },
             _ => {},
           }

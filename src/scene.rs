@@ -115,6 +115,22 @@ pub struct T {
 }
 
 impl T {
+  pub fn move_camera(&mut self, v: &cgmath::Vector3<f32>) {
+    self.eye = self.eye + v;
+  }
+
+  pub fn x(&self) -> cgmath::Vector3<f32> {
+    self.look.cross(self.up)
+  }
+
+  pub fn y(&self) -> cgmath::Vector3<f32> {
+    self.up
+  }
+
+  pub fn z(&self) -> cgmath::Vector3<f32> {
+    self.look
+  }
+
   pub fn render(&self, width: u32, height: u32, random_seed: u64) -> Vec<RGB> {
     let (device, ctx, queue) = opencl::util::create_compute_context().unwrap();
 
