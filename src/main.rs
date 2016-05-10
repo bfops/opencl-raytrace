@@ -52,7 +52,7 @@ pub fn main() {
           // blue ball
           scene::Object { center: cl_float3(-0.5,   -1.0,  -5.0), radius:   1.0, emittance:  0.0, reflectance: 0.1, transmittance: 0.9, diffuseness: 0.01, texture: solid_color(0.0, 0.6, 1.0) },
           // frosted glass ball
-          scene::Object { center: cl_float3(-0.7,   -0.5,  -1.5), radius:   0.5, emittance:  0.0, reflectance: 0.1, transmittance: 0.8, diffuseness: 0.04, texture: solid_color(0.9, 0.9, 1.0) },
+          scene::Object { center: cl_float3(-0.7,   -0.5,  -1.5), radius:   0.5, emittance:  0.0, reflectance: 0.1, transmittance: 0.8, diffuseness: 0.02, texture: solid_color(0.9, 0.9, 1.0) },
           // glass ball
           scene::Object { center: cl_float3( 0.2,   -0.5,  -1.0), radius:   0.5, emittance:  0.0, reflectance: 0.1, transmittance: 0.9, diffuseness: 0.0 , texture: solid_color(0.9, 0.9, 1.0) },
           // brass ball
@@ -92,6 +92,7 @@ pub fn main() {
 
   let mut framebuffer = glium::framebuffer::SimpleFrameBuffer::new(&window, &framebuffer_texture).unwrap();
 
+  let mut stationary_frames_drawn = 0;
   loop {
     let before = time::precise_time_ns();
     let rendered = scene.render(w, h, rand::Rng::next_u64(&mut make_random_seed));
@@ -124,11 +125,11 @@ pub fn main() {
           glium::Blend {
             color:
               glium::BlendingFunction::Addition {
-                source: glium::LinearBlendingFactor::ConstantColor,
-                destination: glium::LinearBlendingFactor::OneMinusConstantColor,
+                source: glium::LinearBlendingFactor::ConstantAlpha,
+                destination: glium::LinearBlendingFactor::OneMinusConstantAlpha,
               },
             alpha: glium::BlendingFunction::AlwaysReplace,
-            constant_value: (0.1, 0.1, 0.1, 0.0),
+            constant_value: (0.1, 0.1, 0.1, 1.0 / (1.0 + stationary_frames_drawn as f32)),
           },
         .. Default::default()
       };
@@ -167,13 +168,21 @@ pub fn main() {
     draw(&window, source, &mut target, &draw_parameters);
     target.finish();
 
+    stationary_frames_drawn += 1;
+
     for event in window.poll_events() {
       match event {
         glutin::Event::Closed => return,
         glutin::Event::KeyboardInput(_, _, Some(key)) => {
           match key {
-            glutin::VirtualKeyCode::W => scene.eye = scene.eye + scene.look,
-            glutin::VirtualKeyCode::S => scene.eye = scene.eye - scene.look,
+            glutin::VirtualKeyCode::W => {
+              stationary_frames_drawn = 0;
+              scene.eye = scene.eye + scene.look;
+            },
+            glutin::VirtualKeyCode::S => {
+              stationary_frames_drawn = 0;
+              scene.eye = scene.eye - scene.look;
+            },
             _ => {},
           }
         },
