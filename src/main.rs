@@ -166,7 +166,7 @@ pub fn main() {
     let mut target = window.draw();
     glium::Surface::clear(&mut target, None, Some((0.0, 0.0, 0.0, 1.0)), false, None, None);
     draw(&window, source, &mut target, &draw_parameters);
-    target.finish();
+    target.finish().unwrap();
 
     stationary_frames_drawn += 1;
 
