@@ -1,37 +1,23 @@
 use cgmath;
-use opencl;
-use opencl::cl::cl_float;
-use opencl::mem::CLBuffer;
+use ocl;
 use std;
-use std::borrow::Borrow;
 use std::io::Read;
 
 use main::RGB;
 
-#[repr(simd)]
-struct SixteenBytes(u64, u64);
-
 #[allow(non_camel_case_types)]
-#[repr(C)]
-pub struct cl_float3 {
-  data: [cl_float; 4],
-  align: [SixteenBytes; 0],
-}
-
-impl cl_float3 {
-  pub fn new(xyz: [cl_float; 3]) -> Self {
-    cl_float3 {
-      data: [xyz[0], xyz[1], xyz[2], 0.0],
-      align: [],
-    }
-  }
-}
+pub type cl_uchar = ocl::cl_h::cl_uchar;
+#[allow(non_camel_case_types)]
+pub type cl_float = ocl::cl_h::cl_float;
+#[allow(non_camel_case_types)]
+pub type cl_float3 = ocl::aliases::ClFloat3;
+#[allow(non_camel_case_types)]
+pub type cl_float4 = ocl::aliases::ClFloat4;
 
 pub mod texture {
   use std;
 
-  use opencl::cl::{cl_uchar, cl_float};
-  use super::{cl_float3};
+  use super::{cl_uchar, cl_float, cl_float3};
 
   #[repr(C)]
   pub struct T {
@@ -132,45 +118,59 @@ impl T {
   }
 
   pub fn render(&self, width: u32, height: u32, random_seed: u64) -> Vec<RGB> {
-    let (device, ctx, queue) = opencl::util::create_compute_context().unwrap();
-
     let num_pixels = width as usize * height as usize;
 
-    let program = {
+    let pq = {
       let mut file = std::fs::File::open("cl/main.cl").unwrap();
       let mut ker = String::new();
       file.read_to_string(&mut ker).unwrap();
-      ctx.create_program_from_source(ker.borrow())
+      ocl::ProQue::builder()
+        .src(ker)
+        .dims([num_pixels])
+        .build()
+        .unwrap()
     };
-    if let Err(e) = program.build(&device) {
-      panic!("Error building program: {}", e);
+
+    let objects: &[f32] =
+      unsafe {
+        std::slice::from_raw_parts(
+          self.objects.as_ptr() as *const f32,
+          self.objects.len() * std::mem::size_of::<Object>() / std::mem::size_of::<f32>()
+        )
+      };
+    let object_buffer =
+      ocl::Buffer::new(
+        pq.queue(),
+        Some(ocl::core::MEM_READ_ONLY | ocl::core::MEM_USE_HOST_PTR),
+        [objects.len()],
+        Some(objects),
+      ).unwrap();
+
+    let output_buffer: ocl::Buffer<f32> = pq.create_buffer().unwrap();
+
+    pq
+      .create_kernel("render")
+      .unwrap()
+      .arg_scl(width)
+      .arg_scl(height)
+      .arg_scl(self.fovy)
+      .arg_vec(cl_float3::new(self.eye.x, self.eye.y, self.eye.z))
+      .arg_vec(cl_float3::new(self.look.x, self.look.y, self.look.z))
+      .arg_vec(cl_float3::new(self.up.x, self.up.y, self.up.z))
+      .arg_scl(random_seed)
+      .arg_buf(&object_buffer)
+      .arg_scl(self.objects.len())
+      .arg_buf(&output_buffer)
+      .enq()
+      .unwrap();
+
+    let mut output = Vec::new();
+    output_buffer.read(&mut output).enq().unwrap();
+    output.shrink_to_fit();
+
+    unsafe {
+      let p: *mut RGB = output.as_ptr() as *mut RGB;
+      Vec::from_raw_parts(p, output.len() / 3, output.capacity() / 3)
     }
-
-    let kernel = program.create_kernel("render");
-
-    let mut arg = 0;
-    kernel.set_arg(arg, &width)                                              ; arg = arg + 1;
-    kernel.set_arg(arg, &height)                                             ; arg = arg + 1;
-    kernel.set_arg(arg, &self.fovy)                                          ; arg = arg + 1;
-    kernel.set_arg(arg, std::convert::AsRef::<[f32; 3]>::as_ref(&self.eye))  ; arg = arg + 1;
-    kernel.set_arg(arg, std::convert::AsRef::<[f32; 3]>::as_ref(&self.look)) ; arg = arg + 1;
-    kernel.set_arg(arg, std::convert::AsRef::<[f32; 3]>::as_ref(&self.up))   ; arg = arg + 1;
-
-    kernel.set_arg(arg, &random_seed)                                        ; arg = arg + 1;
-
-    let objects: &[Object] = &self.objects;
-    let object_buffer: CLBuffer<Object> = ctx.create_buffer(objects.len(), opencl::cl::CL_MEM_READ_ONLY);
-    queue.write(&object_buffer, &&objects[..], ());
-    kernel.set_arg(arg, &object_buffer)                                      ; arg = arg + 1;
-
-    let num_objects = objects.len() as u32;
-    kernel.set_arg(arg, &num_objects)                                        ; arg = arg + 1;
-
-    let output_buffer: CLBuffer<RGB> = ctx.create_buffer(num_pixels, opencl::cl::CL_MEM_WRITE_ONLY);
-    kernel.set_arg(arg, &output_buffer)                                      ; arg = arg + 1;
-
-    let event = queue.enqueue_async_kernel(&kernel, num_pixels, None, ());
-
-    queue.get(&output_buffer, &event)
   }
 }

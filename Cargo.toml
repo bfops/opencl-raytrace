@@ -17,5 +17,5 @@ log = "*"
 rand = "*"
 time = "*"
 
-[dependencies.opencl]
-git = "https://github.com/luqmana/rust-opencl"
+[dependencies.ocl]
+git = "https://github.com/cogciprocate/ocl"

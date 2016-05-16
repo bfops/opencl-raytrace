@@ -6,7 +6,7 @@ extern crate glium;
 extern crate glutin;
 #[macro_use]
 extern crate log;
-extern crate opencl;
+extern crate ocl;
 extern crate rand;
 extern crate time;
 

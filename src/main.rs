@@ -8,7 +8,7 @@ use time;
 use scene;
 
 fn cl_float3(x: f32, y: f32, z: f32) -> scene::cl_float3 {
-  scene::cl_float3::new([x, y, z])
+  scene::cl_float3::new(x, y, z)
 }
 
 fn solid_color(r: f32, g: f32, b: f32) -> scene::texture::T {
