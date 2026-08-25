@@ -262,6 +262,7 @@ float3 texture_color(const Ray* const ray, const __global Texture* texture, cons
   }
 
   printf("Unexpected texture tag!\n");
+  return (float3)(1, 0, 1);
 }
 
 float3 pathtrace(
@@ -310,7 +311,10 @@ float3 pathtrace(
 mwc64x_state_t init_rand_state(ulong random_seed) {
   mwc64x_state_t rand_state;
   rand_state.x = (uint)(random_seed & 0xFFFFFFFF);
-  rand_state.c = (random_seed & 0xFFFFFFFF00000000) >> 32;
+  rand_state.c = (uint)((random_seed >> 32) % MWC64X_A);
+  if (rand_state.x == 0 && rand_state.c == 0) {
+    rand_state.x = 1;
+  }
   return rand_state;
 }
 
@@ -333,7 +337,9 @@ __kernel void render(
   const int id = get_global_id(0);
 
   const int x_pix = id % image_width;
-  const int y_pix = id / image_width;
+  // Framebuffer row zero is the top of the window, while view-space Y grows
+  // upward. Flip the output row so the image is presented right-side up.
+  const int y_pix = image_height - 1 - id / image_width;
 
   const float4 world_pos =
     vmult(view_to_world(eye, look, up),
@@ -345,7 +351,7 @@ __kernel void render(
   ray.origin = eye;
   ray.direction = normalize((world_pos / world_pos.w).xyz - eye);
 
-  random_seed = random_seed * id * id;
+  random_seed ^= ((ulong)id + 1UL) * 0x9E3779B97F4A7C15UL;
   mwc64x_state_t rand_state = init_rand_state(random_seed);
   MWC64X_Skip(&rand_state, 20);
 

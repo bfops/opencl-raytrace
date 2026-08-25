@@ -1,21 +1,16 @@
 [package]
-
 name = "opencl-raytrace"
-version = "0.0.0"
-authors = []
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+autobins = false
+default-run = "raytrace"
 
 [[bin]]
-
 name = "raytrace"
-path = "./src/bin.rs"
+path = "src/main.rs"
 
 [dependencies]
-cgmath = "*"
-glium = "*"
-glutin = "*"
-log = "*"
-rand = "*"
-time = "*"
-
-[dependencies.opencl]
-git = "https://github.com/luqmana/rust-opencl"
+anyhow = "1.0"
+minifb = "0.28"
+opencl3 = "0.12.3"
