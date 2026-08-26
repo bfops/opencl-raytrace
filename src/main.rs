@@ -149,7 +149,17 @@ impl Accumulation {
 
 fn pack_rgb(rgb: [f32; 3]) -> u32 {
     fn channel(value: f32) -> u32 {
-        (value.clamp(0.0, 1.0) * 255.0).round() as u32
+        let linear = if value.is_nan() {
+            0.0
+        } else {
+            value.clamp(0.0, 1.0)
+        };
+        let srgb = if linear <= 0.003_130_8 {
+            12.92 * linear
+        } else {
+            1.055 * linear.powf(1.0 / 2.4) - 0.055
+        };
+        (srgb * 255.0).round() as u32
     }
 
     (channel(rgb[0]) << 16) | (channel(rgb[1]) << 8) | channel(rgb[2])
@@ -166,7 +176,7 @@ mod tests {
         accumulation.add_sample(&[Rgb::new(0.0, 1.0, 0.5)]);
 
         assert_eq!(accumulation.samples(), 2);
-        assert_eq!(accumulation.display_pixels(), &[0x0080_8080]);
+        assert_eq!(accumulation.display_pixels(), &[0x00bc_bcbc]);
 
         accumulation.reset();
         assert_eq!(accumulation.samples(), 0);
@@ -175,7 +185,9 @@ mod tests {
 
     #[test]
     fn rgb_packing_clamps_out_of_range_values() {
-        assert_eq!(pack_rgb([-1.0, 0.5, 2.0]), 0x0000_80ff);
+        assert_eq!(pack_rgb([-1.0, 0.5, 2.0]), 0x0000_bcff);
+        assert_eq!(pack_rgb([0.003_130_8, 0.0, 0.0]), 0x000a_0000);
+        assert_eq!(pack_rgb([f32::NAN, 0.0, 0.0]), 0);
     }
 
     #[test]
