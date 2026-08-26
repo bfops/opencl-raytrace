@@ -286,6 +286,10 @@ float3 pathtrace(
     float toi;
     const __global Object* collided_object;
 
+    if (dot(attenuation, attenuation) < 0.0001f) {
+      break;
+    }
+
     raycast(&ray, objects, num_objects, &toi, &collided_object);
 
     if (toi == HUGE_VALF) {
