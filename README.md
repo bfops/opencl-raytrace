@@ -37,8 +37,8 @@ platform and device are printed at startup.
 
 Controls:
 
-- `W` / `S`: move forward / backward
-- `A` / `D`: move left / right
+- Hold `W` / `S`: move smoothly forward / backward
+- Hold `A` / `D`: move smoothly left / right
 - `Escape`: exit
 
 ## Tests

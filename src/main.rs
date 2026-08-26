@@ -4,14 +4,17 @@ mod scene;
 use std::time::{Duration, Instant};
 
 use anyhow::{Context, Result};
-use minifb::{Key, KeyRepeat, Window, WindowOptions};
+use minifb::{Key, Window, WindowOptions};
 
 use renderer::{OpenClRenderer, Rgb};
 use scene::Scene;
 
 const WIDTH: usize = 800;
 const HEIGHT: usize = 600;
-const CAMERA_STEP: f32 = 1.0;
+const MAX_MOVEMENT_SPEED: f32 = 2.0;
+const MOVEMENT_ACCELERATION: f32 = 8.0;
+const MOVEMENT_DECELERATION: f32 = 10.0;
+const MAX_MOVEMENT_DELTA_SECONDS: f32 = 0.1;
 
 fn main() -> Result<()> {
     let mut scene = Scene::default();
@@ -34,9 +37,15 @@ fn main() -> Result<()> {
     .context("failed to create the display window")?;
     window.set_target_fps(60);
 
+    let mut movement = MovementController::default();
+    let mut last_movement_update = Instant::now();
     let mut last_title_update = Instant::now();
     while window.is_open() && !window.is_key_down(Key::Escape) {
-        if move_camera_from_input(&window, &mut scene) {
+        let now = Instant::now();
+        let elapsed = now.duration_since(last_movement_update).as_secs_f32();
+        last_movement_update = now;
+
+        if move_camera_from_input(&window, &mut scene, &mut movement, elapsed) {
             accumulation.reset();
         }
 
@@ -66,33 +75,97 @@ fn main() -> Result<()> {
     Ok(())
 }
 
-fn move_camera_from_input(window: &Window, scene: &mut Scene) -> bool {
-    let mut delta = [0.0; 3];
+fn move_camera_from_input(
+    window: &Window,
+    scene: &mut Scene,
+    movement: &mut MovementController,
+    elapsed: f32,
+) -> bool {
+    let mut direction = [0.0; 3];
 
-    if window.is_key_pressed(Key::W, KeyRepeat::Yes) {
-        add_scaled(&mut delta, scene.forward(), CAMERA_STEP);
+    if window.is_key_down(Key::W) {
+        add_scaled(&mut direction, scene.forward(), 1.0);
     }
-    if window.is_key_pressed(Key::S, KeyRepeat::Yes) {
-        add_scaled(&mut delta, scene.forward(), -CAMERA_STEP);
+    if window.is_key_down(Key::S) {
+        add_scaled(&mut direction, scene.forward(), -1.0);
     }
-    if window.is_key_pressed(Key::D, KeyRepeat::Yes) {
-        add_scaled(&mut delta, scene.right(), CAMERA_STEP);
+    if window.is_key_down(Key::D) {
+        add_scaled(&mut direction, scene.right(), 1.0);
     }
-    if window.is_key_pressed(Key::A, KeyRepeat::Yes) {
-        add_scaled(&mut delta, scene.right(), -CAMERA_STEP);
+    if window.is_key_down(Key::A) {
+        add_scaled(&mut direction, scene.right(), -1.0);
     }
 
-    if delta == [0.0; 3] {
+    let displacement = movement.update(direction, elapsed);
+    if displacement == [0.0; 3] {
         false
     } else {
-        scene.move_camera(delta);
+        scene.move_camera(displacement);
         true
+    }
+}
+
+#[derive(Default)]
+struct MovementController {
+    velocity: [f32; 3],
+}
+
+impl MovementController {
+    fn update(&mut self, direction: [f32; 3], elapsed: f32) -> [f32; 3] {
+        let elapsed = elapsed.clamp(0.0, MAX_MOVEMENT_DELTA_SECONDS);
+        let direction = normalized_or_zero(direction);
+        let target_velocity = scaled(direction, MAX_MOVEMENT_SPEED);
+        let acceleration = if direction == [0.0; 3] {
+            MOVEMENT_DECELERATION
+        } else {
+            MOVEMENT_ACCELERATION
+        };
+
+        self.velocity = move_towards(self.velocity, target_velocity, acceleration * elapsed);
+        scaled(self.velocity, elapsed)
     }
 }
 
 fn add_scaled(destination: &mut [f32; 3], vector: [f32; 3], scale: f32) {
     for axis in 0..3 {
         destination[axis] += vector[axis] * scale;
+    }
+}
+
+fn scaled(vector: [f32; 3], scale: f32) -> [f32; 3] {
+    [vector[0] * scale, vector[1] * scale, vector[2] * scale]
+}
+
+fn normalized_or_zero(vector: [f32; 3]) -> [f32; 3] {
+    let length = vector.iter().map(|value| value * value).sum::<f32>().sqrt();
+    if length == 0.0 {
+        [0.0; 3]
+    } else {
+        scaled(vector, 1.0 / length)
+    }
+}
+
+fn move_towards(current: [f32; 3], target: [f32; 3], maximum_delta: f32) -> [f32; 3] {
+    let difference = [
+        target[0] - current[0],
+        target[1] - current[1],
+        target[2] - current[2],
+    ];
+    let distance = difference
+        .iter()
+        .map(|value| value * value)
+        .sum::<f32>()
+        .sqrt();
+
+    if distance <= maximum_delta || distance == 0.0 {
+        target
+    } else {
+        let step = maximum_delta / distance;
+        [
+            current[0] + difference[0] * step,
+            current[1] + difference[1] * step,
+            current[2] + difference[2] * step,
+        ]
     }
 }
 
@@ -194,5 +267,73 @@ mod tests {
     fn sample_seeds_are_nonzero_and_distinct() {
         assert_ne!(sample_seed(0), 0);
         assert_ne!(sample_seed(0), sample_seed(1));
+    }
+
+    #[test]
+    fn movement_accelerates_to_maximum_speed_and_brakes_to_a_stop() {
+        let mut movement = MovementController::default();
+
+        let first = movement.update([0.0, 0.0, -1.0], 0.1);
+        assert_vector_near(first, [0.0, 0.0, -0.08]);
+
+        movement.update([0.0, 0.0, -1.0], 0.1);
+        let at_maximum = movement.update([0.0, 0.0, -1.0], 0.1);
+        assert_vector_near(at_maximum, [0.0, 0.0, -0.2]);
+
+        let braking = movement.update([0.0; 3], 0.1);
+        assert_vector_near(braking, [0.0, 0.0, -0.1]);
+        assert_eq!(movement.update([0.0; 3], 0.1), [0.0; 3]);
+    }
+
+    #[test]
+    fn diagonal_movement_is_normalized() {
+        let mut movement = MovementController::default();
+        movement.update([1.0, 0.0, -1.0], 0.1);
+        movement.update([1.0, 0.0, -1.0], 0.1);
+        let displacement = movement.update([1.0, 0.0, -1.0], 0.1);
+
+        assert_near(vector_length(displacement), 0.2);
+        assert_near(displacement[0], -displacement[2]);
+    }
+
+    #[test]
+    fn reversing_direction_transitions_through_zero_velocity() {
+        let mut movement = MovementController::default();
+        for _ in 0..3 {
+            movement.update([1.0, 0.0, 0.0], 0.1);
+        }
+
+        let first_reverse_frame = movement.update([-1.0, 0.0, 0.0], 0.1);
+        assert!(first_reverse_frame[0] > 0.0);
+        for _ in 0..4 {
+            movement.update([-1.0, 0.0, 0.0], 0.1);
+        }
+
+        assert_vector_near(movement.velocity, [-2.0, 0.0, 0.0]);
+    }
+
+    #[test]
+    fn movement_frame_delta_is_capped() {
+        let mut normal = MovementController::default();
+        let mut stalled = MovementController::default();
+
+        assert_vector_near(
+            normal.update([1.0, 0.0, 0.0], 0.1),
+            stalled.update([1.0, 0.0, 0.0], 10.0),
+        );
+    }
+
+    fn assert_vector_near(actual: [f32; 3], expected: [f32; 3]) {
+        for (actual, expected) in actual.into_iter().zip(expected) {
+            assert_near(actual, expected);
+        }
+    }
+
+    fn assert_near(actual: f32, expected: f32) {
+        assert!((actual - expected).abs() < 1.0e-6, "{actual} != {expected}");
+    }
+
+    fn vector_length(vector: [f32; 3]) -> f32 {
+        vector.iter().map(|value| value * value).sum::<f32>().sqrt()
     }
 }
