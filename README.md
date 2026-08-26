@@ -4,6 +4,8 @@ An interactive OpenCL path tracer written in Rust. It renders the original
 scene continuously, averages successive samples to reduce noise, and resets
 the accumulated image whenever the camera moves.
 
+<img width="828" height="666" alt="image" src="https://github.com/user-attachments/assets/3e98987b-c506-4d5a-a757-01f1a1634743" />
+
 ## Requirements
 
 - A current stable Rust toolchain
