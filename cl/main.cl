@@ -265,6 +265,13 @@ float3 texture_color(const Ray* const ray, const __global Texture* texture, cons
   return (float3)(1, 0, 1);
 }
 
+float3 environment_color(const float3 direction) {
+  const float3 horizon = (float3)(0.65f, 0.78f, 1.0f);
+  const float3 zenith = (float3)(0.08f, 0.25f, 0.65f);
+  const float height = pow(clamp(direction.y, 0.0f, 1.0f), 0.65f);
+  return mix(horizon, zenith, height);
+}
+
 float3 pathtrace(
   Ray ray,
   const uint max_depth,
@@ -282,6 +289,7 @@ float3 pathtrace(
     raycast(&ray, objects, num_objects, &toi, &collided_object);
 
     if (toi == HUGE_VALF) {
+      pixel_color += attenuation * environment_color(ray.direction);
       break;
     }
 
